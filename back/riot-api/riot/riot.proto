@@ -1,0 +1,78 @@
+
+syntax = "proto3";
+
+package riot;
+
+option go_package = "/riot";
+
+service RiotAPIService {
+    rpc GetSummonerByName(SummonerByNameRequest) returns (SummonerResponse) {}
+    rpc GetChampionMasteriesBySummoner(ChampionMasteriesRequest) returns (ChampionMasteriesResponse) {}
+    rpc GetLeagueEntriesBySummoner(LeagueEntriesRequest) returns (LeagueEntriesResponse) {}
+    rpc UpdateSummonerByName(SummonerByNameRequest) returns (SummonerResponse) {}
+    rpc UpdateChampionMasteriesBySummoner(ChampionMasteriesRequest) returns (ChampionMasteriesResponse) {}
+    rpc UpdateLeagueEntriesBySummoner(LeagueEntriesRequest) returns (LeagueEntriesResponse) {}
+}
+
+// Request message for getting a summoner by name.
+message SummonerByNameRequest {
+    string name = 1;
+    string tag = 2; // Added field "tag" for the updated summoner identification requirements.
+}
+
+// Response message containing detailed summoner info.
+message SummonerResponse {
+    string id = 1;
+    string accountId = 2;
+    string puuid = 3;
+    string name = 4;
+    string tag = 5; // Added field "tag" to be consistent with request.
+    int32 summonerLevel = 6;
+}
+
+// Request message for getting champion masteries by summoner ID.
+message ChampionMasteriesRequest {
+    string summonerId = 1;
+}
+
+// Response message containing a list of champion masteries.
+message ChampionMasteriesResponse {
+    repeated ChampionMastery masteries = 1;
+}
+
+message ChampionMastery {
+    string puuid = 1;
+    int64 championId = 2;
+    int32 championLevel = 3;
+    int32 championPoints = 4;
+    int64 lastPlayTime = 5;
+    int32 championPointsSinceLastLevel = 6;
+    int32 championPointsUntilNextLevel = 7;
+    int32 tokensEarned = 8;
+    bool chestGranted = 9;
+}
+
+// Request message for getting league entries by summoner ID.
+message LeagueEntriesRequest {
+    string summonerId = 1;
+}
+
+// Response message containing a list of league entries.
+message LeagueEntriesResponse {
+    repeated LeagueEntry entries = 1;
+}
+
+message LeagueEntry {
+    string leagueId = 1;
+    string queueType = 2;
+    string tier = 3;
+    string rank = 4;
+    int32 leaguePoints = 5;
+    int32 wins = 6;
+    int32 losses = 7;
+    bool veteran = 8;
+    bool inactive = 9;
+    bool freshBlood = 10;
+    bool hotStreak = 11;
+}
+
