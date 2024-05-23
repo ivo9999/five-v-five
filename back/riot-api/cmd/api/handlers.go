@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"fmt"
+	"math"
 	"os"
 	"riot-micro/cmd/data"
 	"riot-micro/riot"
@@ -25,13 +26,88 @@ func (s *RiotAPIServer) GetSummonerByName(ctx context.Context, req *riot.Summone
 	}, nil
 }
 
+func (s *RiotAPIServer) GetChampionBySummonerAndLane(ctx context.Context, req *riot.ChampionBySummonerAndLaneRequest) (*riot.ChampionBySummonerAndLaneResponse, error) {
+	champ, _, err := data.GetRandomChampionForLane(s.db, req.SummonerId, req.Lane)
+	if err != nil {
+		return nil, err
+	}
+
+	return &riot.ChampionBySummonerAndLaneResponse{
+		Champion: champ,
+	}, nil
+}
+
+func (s *RiotAPIServer) GetChampionsByTeams(ctx context.Context, req *riot.GetChampionsByTeamsRequest) (*riot.GetChampionsByTeamsResponse, error) {
+	var team1Champions []*riot.SummonerChampion
+	var team2Champions []*riot.SummonerChampion
+
+	var bestTeam1Champions []*riot.SummonerChampion
+	var bestTeam2Champions []*riot.SummonerChampion
+	minDifference := 999999.0
+
+	for i := 0; i < 20; i++ {
+		team1Champions = []*riot.SummonerChampion{}
+		team2Champions = []*riot.SummonerChampion{}
+		var totalPointsTeam1 int32 = 0
+		var totalPointsTeam2 int32 = 0
+		success := true
+
+		for _, sl := range req.Team1 {
+			champ, points, err := data.GetRandomChampionForLane(s.db, sl.SummonerName, sl.Lane)
+			if err != nil {
+				success = false
+				break
+			}
+			team1Champions = append(team1Champions, &riot.SummonerChampion{
+				SummonerName:   sl.SummonerName,
+				Lane:           sl.Lane,
+				ChampionName:   champ,
+				ChampionPoints: points,
+			})
+			totalPointsTeam1 += points
+		}
+
+		for _, sl := range req.Team2 {
+			champ, points, err := data.GetRandomChampionForLane(s.db, sl.SummonerName, sl.Lane)
+			if err != nil {
+				success = false
+				break
+			}
+			team2Champions = append(team2Champions, &riot.SummonerChampion{
+				SummonerName:   sl.SummonerName,
+				Lane:           sl.Lane,
+				ChampionName:   champ,
+				ChampionPoints: points,
+			})
+			totalPointsTeam2 += points
+		}
+
+		if success {
+			difference := math.Abs(float64(totalPointsTeam1) - float64(totalPointsTeam2))
+			if difference < minDifference {
+				minDifference = difference
+				bestTeam1Champions = append([]*riot.SummonerChampion{}, team1Champions...)
+				bestTeam2Champions = append([]*riot.SummonerChampion{}, team2Champions...)
+			}
+
+			if float64(totalPointsTeam1)/float64(totalPointsTeam2) <= 1.25 && float64(totalPointsTeam2)/float64(totalPointsTeam1) <= 1.25 {
+				break
+			}
+		}
+	}
+
+	return &riot.GetChampionsByTeamsResponse{
+		Team1Champions: bestTeam1Champions,
+		Team2Champions: bestTeam2Champions,
+	}, nil
+}
+
 func (s *RiotAPIServer) UpdateSummonerByName(ctx context.Context, req *riot.SummonerByNameRequest) (*riot.SummonerResponse, error) {
 	err := godotenv.Load()
 	if err != nil {
 		fmt.Println("Error loading .env file")
 	}
 
-	// Get API key from environment variables
 	apiKey := os.Getenv("RIOT_API_KEY")
 	if apiKey == "" {
 		fmt.Println("API key not set in the environment variables")
@@ -47,7 +123,6 @@ func (s *RiotAPIServer) UpdateSummonerByName(ctx context.Context, req *riot.Summ
 		return nil, err
 	}
 
-	// Update database
 	if err := data.InsertSummoner(s.db, ctx, data.Summoner{
 		ID:            summoner.ID,
 		AccountID:     summoner.AccountID,
@@ -129,6 +204,11 @@ func (s *RiotAPIServer) UpdateLeagueEntriesBySummoner(ctx context.Context, req *
 			SummonerID:   summoner.ID,
 			QueueType:    entry.QueueType,
 			Tier:         entry.Tier,
+			Wins:         entry.Wins,
+			Losses:       entry.Losses,
+			Veteran:      entry.Veteran,
+			Inactive:     entry.Inactive,
+			FreshBlood:   entry.FreshBlood,
 			Rank:         entry.Rank,
 			LeaguePoints: entry.LeaguePoints,
 		}); err != nil {
@@ -139,7 +219,12 @@ func (s *RiotAPIServer) UpdateLeagueEntriesBySummoner(ctx context.Context, req *
 			LeagueId:     entry.LeagueID,
 			QueueType:    entry.QueueType,
 			Tier:         entry.Tier,
+			Wins:         int32(entry.Wins),
+			Losses:       int32(entry.Losses),
 			Rank:         entry.Rank,
+			Veteran:      entry.Veteran,
+			Inactive:     entry.Inactive,
+			FreshBlood:   entry.FreshBlood,
 			LeaguePoints: int32(entry.LeaguePoints),
 		})
 	}

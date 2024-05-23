@@ -3,7 +3,10 @@ package data
 import (
 	"context"
 	"database/sql"
+	"errors"
 	"log"
+	"math/rand"
+	"time"
 )
 
 type DB struct {
@@ -64,6 +67,18 @@ type LeagueEntry struct {
 	HotStreak    bool   `json:"hotStreak"`
 }
 
+type SummonerLane struct {
+	SummonerName string `json:"summoner_name"`
+	Lane         string `json:"lane"`
+}
+
+type SummonerChampion struct {
+	SummonerName   string `json:"summoner_name"`
+	Lane           string `json:"lane"`
+	ChampionName   string `json:"champion_name"`
+	ChampionPoints int    `json:"champion_points"`
+}
+
 func InitializeDatabase(db *sql.DB) error {
 	ctx := context.Background()
 
@@ -72,7 +87,7 @@ func InitializeDatabase(db *sql.DB) error {
     CREATE TABLE IF NOT EXISTS summoners (
         id VARCHAR(255) PRIMARY KEY,
         account_id VARCHAR(255),
-        puuid VARCHAR(255) UNIQUE,  
+        puuid VARCHAR(255) UNIQUE,
         name VARCHAR(255),
         tag VARCHAR(255),
         summoner_level INT
@@ -122,8 +137,163 @@ func InitializeDatabase(db *sql.DB) error {
 		return err
 	}
 
+	// Creating lanes table
+	if _, err := db.ExecContext(ctx, `
+    CREATE TABLE IF NOT EXISTS lanes (
+        lane_name VARCHAR(50) PRIMARY KEY
+    );`); err != nil {
+		log.Fatalf("Error creating lanes table: %v", err)
+		return err
+	}
+
+	// Create the 'champions' table
+	if _, err := db.ExecContext(ctx, `
+    CREATE TABLE IF NOT EXISTS champions (
+        champion_id INT PRIMARY KEY,
+        name VARCHAR(255)
+    );`); err != nil {
+		log.Fatalf("Error creating champions table: %v", err)
+		return err
+	}
+
+	// Create the 'champion_lanes' table
+	if _, err := db.ExecContext(ctx, `
+    CREATE TABLE IF NOT EXISTS champion_lanes (
+        champion_id INT,
+        name VARCHAR(255),
+        lane_name VARCHAR(50),
+        FOREIGN KEY (champion_id) REFERENCES champions(champion_id),
+        FOREIGN KEY (lane_name) REFERENCES lanes(lane_name),
+        PRIMARY KEY (champion_id, lane_name)
+    );`); err != nil {
+		log.Fatalf("Error creating champion_lanes table: %v", err)
+		return err
+	}
+
+	//	if err := SeedLanesTable(db); err != nil {
+	//		return nil
+	//	}
+
+	//	champs := GetChampions()
+
+	//	if err := SeedChampionsTable(db, champs); err != nil {
+	//		return nil
+	//	}
+
+	//	if err := SeedChampionLanes(db, champs); err != nil {
+	//		return nil
+	//	}
+
 	log.Println("Database initialized successfully.")
 	return nil
+}
+
+func SeedChampionLanes(db *sql.DB, champions []Champion) error {
+	ctx := context.Background()
+
+	for _, champ := range champions {
+		for _, role := range champ.Roles {
+			if _, err := db.ExecContext(ctx, "INSERT INTO champion_lanes (champion_id, name, lane_name) VALUES ($1, $2, $3)", champ.ChampionID, champ.Name, role); err != nil {
+				log.Printf("Error inserting into champion_lanes: %v", err)
+				return err
+			}
+		}
+	}
+
+	log.Println("champion_lanes table seeded successfully.")
+	return nil
+}
+
+func SeedChampionsTable(db *sql.DB, champions []Champion) error {
+	ctx := context.Background()
+
+	for _, champ := range champions {
+		if _, err := db.ExecContext(ctx, "INSERT INTO champions (champion_id, name) VALUES ($1, $2)", champ.ChampionID, champ.Name); err != nil {
+			log.Printf("Error inserting into champions: %v", err)
+			return err
+		}
+	}
+
+	log.Println("champions table seeded successfully.")
+	return nil
+}
+
+func SeedLanesTable(db *sql.DB) error {
+	ctx := context.Background()
+
+	lanes := []string{"Top", "Mid", "Jungle", "ADC", "Support"}
+
+	for _, lane := range lanes {
+		if _, err := db.ExecContext(ctx, "INSERT INTO lanes (lane_name) VALUES ($1) ", lane); err != nil {
+			log.Printf("Error inserting into lanes: %v", err)
+			return err
+		}
+	}
+
+	log.Println("lanes table seeded successfully.")
+	return nil
+}
+
+func GetRandomChampionForLane(db *sql.DB, summonerName string, lane string) (string, int32, error) {
+	ctx := context.Background()
+
+	// Get the summoner's PUUID based on their name
+	var puuid string
+	err := db.QueryRowContext(ctx, "SELECT puuid FROM summoners WHERE name = $1", summonerName).Scan(&puuid)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			log.Printf("No summoner found with name: %v", summonerName)
+			return "", 0, nil // No summoner found
+		}
+		log.Printf("Error retrieving summoner PUUID: %v", err)
+		return "", 0, err
+	}
+
+	// Get the list of champions for the given lane that the summoner has champion points on
+	query := `
+    SELECT c.name, cm.champion_points
+    FROM champion_masteries cm
+    JOIN champion_lanes cl ON cm.champion_id = cl.champion_id
+    JOIN champions c ON cl.champion_id = c.champion_id
+    WHERE cm.puuid = $1 AND cl.lane_name = $2
+    `
+	rows, err := db.QueryContext(ctx, query, puuid, lane)
+	if err != nil {
+		log.Printf("Error retrieving champions for lane: %v", err)
+		return "", 0, err
+	}
+	defer rows.Close()
+
+	var champions []struct {
+		name           string
+		championPoints int32
+	}
+	for rows.Next() {
+		var champion struct {
+			name           string
+			championPoints int32
+		}
+		if err := rows.Scan(&champion.name, &champion.championPoints); err != nil {
+			log.Printf("Error scanning champion name and points: %v", err)
+			return "", 0, err
+		}
+		champions = append(champions, champion)
+	}
+	if err = rows.Err(); err != nil {
+		log.Printf("Error reading champions: %v", err)
+		return "", 0, err
+	}
+
+	// If no champions are found, return an empty result
+	if len(champions) == 0 {
+		return "", 0, nil
+	}
+
+	// Return a random champion from the list
+	rand.Seed(time.Now().UnixNano())
+	randomChampion := champions[rand.Intn(len(champions))]
+
+	return randomChampion.name, randomChampion.championPoints, nil
 }
 
 // Insert a Summoner into the database.
@@ -323,4 +493,110 @@ func GetLeagueEntries(db *sql.DB, ctx context.Context, summonerID string) ([]Lea
 		return nil, err
 	}
 	return entries, nil
+}
+
+func GetBalancedChampionsForLanes(db *sql.DB, team1 []SummonerLane, team2 []SummonerLane) ([]SummonerChampion, []SummonerChampion, error) {
+	ctx := context.Background()
+	rand.Seed(time.Now().UnixNano())
+
+	const maxAttempts = 10
+
+	for attempt := 0; attempt < maxAttempts; attempt++ {
+		team1Champions, err := getChampionsForTeam(ctx, db, team1)
+		if err != nil {
+			return nil, nil, err
+		}
+
+		team2Champions, err := getChampionsForTeam(ctx, db, team2)
+		if err != nil {
+			return nil, nil, err
+		}
+
+		// Try to balance the teams by champion points
+		balanced := balanceTeams(team1Champions, team2Champions)
+		if balanced {
+			return team1Champions, team2Champions, nil
+		}
+	}
+
+	return nil, nil, errors.New("unable to balance teams within the 25% champion points difference after 10 attempts")
+}
+
+func getChampionsForTeam(ctx context.Context, db *sql.DB, team []SummonerLane) ([]SummonerChampion, error) {
+	var teamChampions []SummonerChampion
+
+	for _, sl := range team {
+		champion, err := getRandomChampionForSummonerLane(ctx, db, sl.SummonerName, sl.Lane)
+		if err != nil {
+			return nil, err
+		}
+		teamChampions = append(teamChampions, champion)
+	}
+
+	return teamChampions, nil
+}
+
+func balanceTeams(team1 []SummonerChampion, team2 []SummonerChampion) bool {
+	points1 := totalChampionPoints(team1)
+	points2 := totalChampionPoints(team2)
+
+	difference := float64(points1-points2) / float64(points1+points2)
+	return difference <= 0.25
+}
+
+func totalChampionPoints(team []SummonerChampion) int {
+	totalPoints := 0
+	for _, sc := range team {
+		totalPoints += sc.ChampionPoints
+	}
+	return totalPoints
+}
+
+func getRandomChampionForSummonerLane(ctx context.Context, db *sql.DB, summonerName string, lane string) (SummonerChampion, error) {
+	var sc SummonerChampion
+
+	// Get the summoner's PUUID based on their name
+	var puuid string
+	err := db.QueryRowContext(ctx, "SELECT puuid FROM summoners WHERE name = $1", summonerName).Scan(&puuid)
+	if err != nil {
+		return sc, err
+	}
+
+	// Get the list of champions for the given lane that the summoner has champion points on
+	query := `
+    SELECT c.name, cm.champion_points
+    FROM champion_masteries cm
+    JOIN champion_lanes cl ON cm.champion_id = cl.champion_id
+    JOIN champions c ON cl.champion_id = c.champion_id
+    WHERE cm.puuid = $1 AND cl.lane_name = $2
+    `
+	rows, err := db.QueryContext(ctx, query, puuid, lane)
+	if err != nil {
+		return sc, err
+	}
+	defer rows.Close()
+
+	var champions []SummonerChampion
+	for rows.Next() {
+		var champion SummonerChampion
+		if err := rows.Scan(&champion.ChampionName, &champion.ChampionPoints); err != nil {
+			return sc, err
+		}
+		champion.SummonerName = summonerName
+		champion.Lane = lane
+		champions = append(champions, champion)
+	}
+	if err = rows.Err(); err != nil {
+		return sc, err
+	}
+
+	// If no champions are found, return an empty result
+	if len(champions) == 0 {
+		return sc, errors.New("no champions found for the summoner and lane")
+	}
+
+	// Select a random champion from the list
+	randomChampion := champions[rand.Intn(len(champions))]
+
+	return randomChampion, nil
 }

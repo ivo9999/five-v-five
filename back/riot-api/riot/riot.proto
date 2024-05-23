@@ -12,6 +12,17 @@ service RiotAPIService {
     rpc UpdateSummonerByName(SummonerByNameRequest) returns (SummonerResponse) {}
     rpc UpdateChampionMasteriesBySummoner(ChampionMasteriesRequest) returns (ChampionMasteriesResponse) {}
     rpc UpdateLeagueEntriesBySummoner(LeagueEntriesRequest) returns (LeagueEntriesResponse) {}
+    rpc GetChampionBySummonerAndLane(ChampionBySummonerAndLaneRequest) returns (ChampionBySummonerAndLaneResponse) {}
+    rpc GetChampionsByTeams(GetChampionsByTeamsRequest) returns (GetChampionsByTeamsResponse) {}
+}
+
+message ChampionBySummonerAndLaneRequest {
+    string summonerId = 1;
+    string lane = 2;
+}
+
+message ChampionBySummonerAndLaneResponse {
+    string champion = 1;
 }
 
 // Request message for getting a summoner by name.
@@ -74,5 +85,27 @@ message LeagueEntry {
     bool inactive = 9;
     bool freshBlood = 10;
     bool hotStreak = 11;
+}
+
+message SummonerLane {
+    string summonerName = 1;
+    string lane = 2;
+}
+
+message SummonerChampion {
+    string summonerName = 1;
+    string lane = 2;
+    string championName = 3;
+    int32 championPoints = 4;
+}
+
+message GetChampionsByTeamsRequest {
+    repeated SummonerLane team1 = 1;
+    repeated SummonerLane team2 = 2;
+}
+
+message GetChampionsByTeamsResponse {
+    repeated SummonerChampion team1Champions = 1;
+    repeated SummonerChampion team2Champions = 2;
 }
 
