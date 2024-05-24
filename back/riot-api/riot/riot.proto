@@ -14,6 +14,7 @@ service RiotAPIService {
     rpc UpdateLeagueEntriesBySummoner(LeagueEntriesRequest) returns (LeagueEntriesResponse) {}
     rpc GetChampionBySummonerAndLane(ChampionBySummonerAndLaneRequest) returns (ChampionBySummonerAndLaneResponse) {}
     rpc GetChampionsByTeams(GetChampionsByTeamsRequest) returns (GetChampionsByTeamsResponse) {}
+    rpc GetTeams(GetTeamsRequest) returns (GetTeamsResponse) {} // New RPC
 }
 
 message ChampionBySummonerAndLaneRequest {
@@ -107,5 +108,15 @@ message GetChampionsByTeamsRequest {
 message GetChampionsByTeamsResponse {
     repeated SummonerChampion team1Champions = 1;
     repeated SummonerChampion team2Champions = 2;
+}
+
+// New messages for GetTeams
+message GetTeamsRequest {
+    repeated string summoners = 1;
+}
+
+message GetTeamsResponse {
+    repeated string team1 = 1;
+    repeated string team2 = 2;
 }
 

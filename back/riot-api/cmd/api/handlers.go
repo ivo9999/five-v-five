@@ -7,6 +7,7 @@ import (
 	"os"
 	"riot-micro/cmd/data"
 	"riot-micro/riot"
+	"sort"
 
 	"github.com/joho/godotenv"
 )
@@ -27,6 +28,7 @@ func (s *RiotAPIServer) GetSummonerByName(ctx context.Context, req *riot.Summone
 }
 
 func (s *RiotAPIServer) GetChampionBySummonerAndLane(ctx context.Context, req *riot.ChampionBySummonerAndLaneRequest) (*riot.ChampionBySummonerAndLaneResponse, error) {
+	fmt.Println(req.SummonerId, req.Lane)
 	champ, _, err := data.GetRandomChampionForLane(s.db, req.SummonerId, req.Lane)
 	if err != nil {
 		return nil, err
@@ -315,4 +317,73 @@ func (s *RiotAPIServer) UpdateChampionMasteriesBySummoner(ctx context.Context, r
 	return &riot.ChampionMasteriesResponse{
 		Masteries: grpcMasteries,
 	}, nil
+}
+
+func (s *RiotAPIServer) GetTeams(ctx context.Context, req *riot.GetTeamsRequest) (*riot.GetTeamsResponse, error) {
+	var summoners []string
+	for _, name := range req.Summoners {
+		fmt.Println(name)
+		summoners = append(summoners, name)
+	}
+	fmt.Println(summoners)
+
+	// Fetch rank points for each summoner
+	summonerRanks := make(map[string]int)
+	for _, summonerName := range summoners {
+		summoner, err := data.GetSummoner(s.db, ctx, summonerName)
+		if err != nil {
+			return nil, err
+		}
+		if summoner == nil {
+			return nil, fmt.Errorf("summoner %s not found", summonerName)
+		}
+
+		entries, err := data.GetLeagueEntries(s.db, ctx, summoner.ID)
+		if err != nil {
+			return nil, err
+		}
+
+		if len(entries) == 0 {
+			return nil, fmt.Errorf("no league entries found for summoner %s", summonerName)
+		}
+
+		// Use the highest rank if multiple entries
+		highestRank := entries[0]
+		for _, entry := range entries {
+			if data.GetRankPoints(entry.Tier, entry.Rank) > data.GetRankPoints(highestRank.Tier, highestRank.Rank) {
+				highestRank = entry
+			}
+		}
+
+		summonerRanks[summonerName] = data.GetRankPoints(highestRank.Tier, highestRank.Rank)
+	}
+
+	// Sort summoners by rank points
+	sort.SliceStable(summoners, func(i, j int) bool {
+		return summonerRanks[summoners[i]] > summonerRanks[summoners[j]]
+	})
+
+	// Split into two balanced teams
+	team1 := []string{}
+	team2 := []string{}
+	team1Points := 0
+	team2Points := 0
+
+	for _, summonerName := range summoners {
+		if team1Points <= team2Points {
+			team1 = append(team1, summonerName)
+			team1Points += summonerRanks[summonerName]
+		} else {
+			team2 = append(team2, summonerName)
+			team2Points += summonerRanks[summonerName]
+		}
+	}
+
+	// Convert to gRPC response
+	resp := &riot.GetTeamsResponse{
+		Team1: team1,
+		Team2: team2,
+	}
+
+	return resp, nil
 }

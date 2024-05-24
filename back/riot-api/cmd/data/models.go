@@ -79,6 +79,29 @@ type SummonerChampion struct {
 	ChampionPoints int    `json:"champion_points"`
 }
 
+func GetRankPoints(tier string, rank string) int {
+	tierPoints := map[string]int{
+		"iron":        0,
+		"bronze":      10,
+		"silver":      20,
+		"gold":        30,
+		"platinum":    40,
+		"diamond":     50,
+		"master":      60,
+		"grandmaster": 70,
+		"challenger":  80,
+	}
+
+	rankPoints := map[string]int{
+		"IV":  1,
+		"III": 2,
+		"II":  3,
+		"I":   4,
+	}
+
+	return tierPoints[tier] + rankPoints[rank]
+}
+
 func InitializeDatabase(db *sql.DB) error {
 	ctx := context.Background()
 
@@ -221,7 +244,7 @@ func SeedChampionsTable(db *sql.DB, champions []Champion) error {
 func SeedLanesTable(db *sql.DB) error {
 	ctx := context.Background()
 
-	lanes := []string{"Top", "Mid", "Jungle", "ADC", "Support"}
+	lanes := []string{"top", "mid", "jungle", "adc", "support"}
 
 	for _, lane := range lanes {
 		if _, err := db.ExecContext(ctx, "INSERT INTO lanes (lane_name) VALUES ($1) ", lane); err != nil {

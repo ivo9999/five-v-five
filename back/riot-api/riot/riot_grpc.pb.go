@@ -27,6 +27,7 @@ const (
 	RiotAPIService_UpdateLeagueEntriesBySummoner_FullMethodName     = "/riot.RiotAPIService/UpdateLeagueEntriesBySummoner"
 	RiotAPIService_GetChampionBySummonerAndLane_FullMethodName      = "/riot.RiotAPIService/GetChampionBySummonerAndLane"
 	RiotAPIService_GetChampionsByTeams_FullMethodName               = "/riot.RiotAPIService/GetChampionsByTeams"
+	RiotAPIService_GetTeams_FullMethodName                          = "/riot.RiotAPIService/GetTeams"
 )
 
 // RiotAPIServiceClient is the client API for RiotAPIService service.
@@ -41,6 +42,7 @@ type RiotAPIServiceClient interface {
 	UpdateLeagueEntriesBySummoner(ctx context.Context, in *LeagueEntriesRequest, opts ...grpc.CallOption) (*LeagueEntriesResponse, error)
 	GetChampionBySummonerAndLane(ctx context.Context, in *ChampionBySummonerAndLaneRequest, opts ...grpc.CallOption) (*ChampionBySummonerAndLaneResponse, error)
 	GetChampionsByTeams(ctx context.Context, in *GetChampionsByTeamsRequest, opts ...grpc.CallOption) (*GetChampionsByTeamsResponse, error)
+	GetTeams(ctx context.Context, in *GetTeamsRequest, opts ...grpc.CallOption) (*GetTeamsResponse, error)
 }
 
 type riotAPIServiceClient struct {
@@ -123,6 +125,15 @@ func (c *riotAPIServiceClient) GetChampionsByTeams(ctx context.Context, in *GetC
 	return out, nil
 }
 
+func (c *riotAPIServiceClient) GetTeams(ctx context.Context, in *GetTeamsRequest, opts ...grpc.CallOption) (*GetTeamsResponse, error) {
+	out := new(GetTeamsResponse)
+	err := c.cc.Invoke(ctx, RiotAPIService_GetTeams_FullMethodName, in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // RiotAPIServiceServer is the server API for RiotAPIService service.
 // All implementations must embed UnimplementedRiotAPIServiceServer
 // for forward compatibility
@@ -135,6 +146,7 @@ type RiotAPIServiceServer interface {
 	UpdateLeagueEntriesBySummoner(context.Context, *LeagueEntriesRequest) (*LeagueEntriesResponse, error)
 	GetChampionBySummonerAndLane(context.Context, *ChampionBySummonerAndLaneRequest) (*ChampionBySummonerAndLaneResponse, error)
 	GetChampionsByTeams(context.Context, *GetChampionsByTeamsRequest) (*GetChampionsByTeamsResponse, error)
+	GetTeams(context.Context, *GetTeamsRequest) (*GetTeamsResponse, error)
 	mustEmbedUnimplementedRiotAPIServiceServer()
 }
 
@@ -165,6 +177,9 @@ func (UnimplementedRiotAPIServiceServer) GetChampionBySummonerAndLane(context.Co
 }
 func (UnimplementedRiotAPIServiceServer) GetChampionsByTeams(context.Context, *GetChampionsByTeamsRequest) (*GetChampionsByTeamsResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetChampionsByTeams not implemented")
+}
+func (UnimplementedRiotAPIServiceServer) GetTeams(context.Context, *GetTeamsRequest) (*GetTeamsResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method GetTeams not implemented")
 }
 func (UnimplementedRiotAPIServiceServer) mustEmbedUnimplementedRiotAPIServiceServer() {}
 
@@ -323,6 +338,24 @@ func _RiotAPIService_GetChampionsByTeams_Handler(srv interface{}, ctx context.Co
 	return interceptor(ctx, in, info, handler)
 }
 
+func _RiotAPIService_GetTeams_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetTeamsRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(RiotAPIServiceServer).GetTeams(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: RiotAPIService_GetTeams_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(RiotAPIServiceServer).GetTeams(ctx, req.(*GetTeamsRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // RiotAPIService_ServiceDesc is the grpc.ServiceDesc for RiotAPIService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -361,6 +394,10 @@ var RiotAPIService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "GetChampionsByTeams",
 			Handler:    _RiotAPIService_GetChampionsByTeams_Handler,
+		},
+		{
+			MethodName: "GetTeams",
+			Handler:    _RiotAPIService_GetTeams_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},
