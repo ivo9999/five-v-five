@@ -2,13 +2,12 @@
 // versions:
 // - protoc-gen-go-grpc v1.3.0
 // - protoc             v5.26.1
-// source: protofile.proto
+// source: riot.proto
 
-package proto
+package riot
 
 import (
 	context "context"
-
 	grpc "google.golang.org/grpc"
 	codes "google.golang.org/grpc/codes"
 	status "google.golang.org/grpc/status"
@@ -20,14 +19,14 @@ import (
 const _ = grpc.SupportPackageIsVersion7
 
 const (
-	RiotAPIService_GetSummonerByName_FullMethodName                 = "/proto.RiotAPIService/GetSummonerByName"
-	RiotAPIService_GetChampionMasteriesBySummoner_FullMethodName    = "/proto.RiotAPIService/GetChampionMasteriesBySummoner"
-	RiotAPIService_GetLeagueEntriesBySummoner_FullMethodName        = "/proto.RiotAPIService/GetLeagueEntriesBySummoner"
-	RiotAPIService_UpdateSummonerByName_FullMethodName              = "/proto.RiotAPIService/UpdateSummonerByName"
-	RiotAPIService_UpdateChampionMasteriesBySummoner_FullMethodName = "/proto.RiotAPIService/UpdateChampionMasteriesBySummoner"
-	RiotAPIService_UpdateLeagueEntriesBySummoner_FullMethodName     = "/proto.RiotAPIService/UpdateLeagueEntriesBySummoner"
-	RiotAPIService_GetChampionBySummonerAndLane_FullMethodName      = "/proto.RiotAPIService/GetChampionBySummonerAndLane"
-	RiotAPIService_GetChampionsByTeams_FullMethodName               = "/proto.RiotAPIService/GetChampionsByTeams"
+	RiotAPIService_GetSummonerByName_FullMethodName                 = "/riot.RiotAPIService/GetSummonerByName"
+	RiotAPIService_GetChampionMasteriesBySummoner_FullMethodName    = "/riot.RiotAPIService/GetChampionMasteriesBySummoner"
+	RiotAPIService_GetLeagueEntriesBySummoner_FullMethodName        = "/riot.RiotAPIService/GetLeagueEntriesBySummoner"
+	RiotAPIService_UpdateSummonerByName_FullMethodName              = "/riot.RiotAPIService/UpdateSummonerByName"
+	RiotAPIService_UpdateChampionMasteriesBySummoner_FullMethodName = "/riot.RiotAPIService/UpdateChampionMasteriesBySummoner"
+	RiotAPIService_UpdateLeagueEntriesBySummoner_FullMethodName     = "/riot.RiotAPIService/UpdateLeagueEntriesBySummoner"
+	RiotAPIService_GetChampionBySummonerAndLane_FullMethodName      = "/riot.RiotAPIService/GetChampionBySummonerAndLane"
+	RiotAPIService_GetChampionsByTeams_FullMethodName               = "/riot.RiotAPIService/GetChampionsByTeams"
 )
 
 // RiotAPIServiceClient is the client API for RiotAPIService service.
@@ -140,36 +139,30 @@ type RiotAPIServiceServer interface {
 }
 
 // UnimplementedRiotAPIServiceServer must be embedded to have forward compatible implementations.
-type UnimplementedRiotAPIServiceServer struct{}
+type UnimplementedRiotAPIServiceServer struct {
+}
 
 func (UnimplementedRiotAPIServiceServer) GetSummonerByName(context.Context, *SummonerByNameRequest) (*SummonerResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetSummonerByName not implemented")
 }
-
 func (UnimplementedRiotAPIServiceServer) GetChampionMasteriesBySummoner(context.Context, *ChampionMasteriesRequest) (*ChampionMasteriesResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetChampionMasteriesBySummoner not implemented")
 }
-
 func (UnimplementedRiotAPIServiceServer) GetLeagueEntriesBySummoner(context.Context, *LeagueEntriesRequest) (*LeagueEntriesResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetLeagueEntriesBySummoner not implemented")
 }
-
 func (UnimplementedRiotAPIServiceServer) UpdateSummonerByName(context.Context, *SummonerByNameRequest) (*SummonerResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method UpdateSummonerByName not implemented")
 }
-
 func (UnimplementedRiotAPIServiceServer) UpdateChampionMasteriesBySummoner(context.Context, *ChampionMasteriesRequest) (*ChampionMasteriesResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method UpdateChampionMasteriesBySummoner not implemented")
 }
-
 func (UnimplementedRiotAPIServiceServer) UpdateLeagueEntriesBySummoner(context.Context, *LeagueEntriesRequest) (*LeagueEntriesResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method UpdateLeagueEntriesBySummoner not implemented")
 }
-
 func (UnimplementedRiotAPIServiceServer) GetChampionBySummonerAndLane(context.Context, *ChampionBySummonerAndLaneRequest) (*ChampionBySummonerAndLaneResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetChampionBySummonerAndLane not implemented")
 }
-
 func (UnimplementedRiotAPIServiceServer) GetChampionsByTeams(context.Context, *GetChampionsByTeamsRequest) (*GetChampionsByTeamsResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetChampionsByTeams not implemented")
 }
@@ -334,7 +327,7 @@ func _RiotAPIService_GetChampionsByTeams_Handler(srv interface{}, ctx context.Co
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
 var RiotAPIService_ServiceDesc = grpc.ServiceDesc{
-	ServiceName: "proto.RiotAPIService",
+	ServiceName: "riot.RiotAPIService",
 	HandlerType: (*RiotAPIServiceServer)(nil),
 	Methods: []grpc.MethodDesc{
 		{
@@ -371,5 +364,5 @@ var RiotAPIService_ServiceDesc = grpc.ServiceDesc{
 		},
 	},
 	Streams:  []grpc.StreamDesc{},
-	Metadata: "protofile.proto",
+	Metadata: "riot.proto",
 }

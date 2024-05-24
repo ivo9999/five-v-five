@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"net/http"
 
 	"github.com/go-chi/chi/v5"
@@ -23,6 +24,7 @@ func (app *Config) routes() http.Handler {
 
 	handlers := NewHandlers(app.DB, app.RiotAPI, app)
 
+  fmt.Println("check check")
 	handlers.RegisterRoutes(mux)
 
 	return mux

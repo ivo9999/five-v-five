@@ -4,7 +4,7 @@ import (
 	"context"
 	"fmt"
 	"game-management-micro/data"
-	"game-management-micro/proto"
+	proto "game-management-micro/riot"
 	"net/http"
 	"strconv"
 

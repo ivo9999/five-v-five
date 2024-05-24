@@ -4,7 +4,8 @@ import (
 	"database/sql"
 	"fmt"
 	"game-management-micro/data"
-	"game-management-micro/proto"
+	proto "game-management-micro/riot"
+	"log"
 	"net/http"
 	"time"
 
@@ -41,7 +42,9 @@ func main() {
 		fmt.Println("Can't connect to grpc server")
 		return
 	}
+
 	riotAPIClient := proto.NewRiotAPIServiceClient(grpcConn)
+	fmt.Println("Connected to gRPC server successfully")
 
 	// set up config
 	app := Config{
@@ -88,6 +91,10 @@ func openDB(dsn string) (*sql.DB, error) {
 	db, err := sql.Open("pgx", dsn)
 	if err != nil {
 		return nil, err
+	}
+
+	if err := data.InitializeDatabase(db); err != nil {
+		log.Fatal("error initializing database:", err)
 	}
 
 	err = db.Ping()
