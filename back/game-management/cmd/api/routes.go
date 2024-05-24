@@ -24,7 +24,7 @@ func (app *Config) routes() http.Handler {
 
 	handlers := NewHandlers(app.DB, app.RiotAPI, app)
 
-  fmt.Println("check check")
+	fmt.Println("check check")
 	handlers.RegisterRoutes(mux)
 
 	return mux
@@ -33,10 +33,12 @@ func (app *Config) routes() http.Handler {
 func (h *Handlers) RegisterRoutes(r chi.Router) {
 	r.Use(middleware.Logger)
 
-	r.Post("/games", h.InitializeGame)
-	r.Post("/games/{gameId}/add/{team}", h.AddPlayerToTeam)
-	r.Post("/games/{gameId}/move", h.MovePlayer)
-	r.Post("/games/{gameId}/winner", h.SetWinner)
-	r.Get("/champion", h.GetChampion)
-	r.Post("/games/{gameId}/champions", h.GetGameChampions)
+	r.Post("/teams", h.CreateTeams)               // New endpoint to create balanced teams
+	r.Post("/games", h.InitializeGame)            // Updated endpoint to create a game from two teams
+	r.Get("/games/{gameId}", h.GetGame)           // New endpoint to get a game by ID
+	r.Post("/games/champions", h.GetChamps)       // Updated endpoint to get champions for a list of players and lanes
+	r.Get("/champion", h.GetChampion)             // Updated endpoint to get a champion for a player and lane
+	r.Post("/games/{gameId}/winner", h.SetWinner) // Updated endpoint to set the winner of a game
+	r.Post("/games/{gameId}/move", h.MovePlayer)  // Updated endpoint to move a player between teams
+	r.Post("/dropdb", h.DropDB)
 }
