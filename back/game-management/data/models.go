@@ -7,20 +7,6 @@ import (
 	"log"
 )
 
-type Models struct {
-	Summoner Summoner
-	Game     Game
-	Team     Team
-}
-
-func NewModels(db *DB) Models {
-	return Models{
-		Summoner: Summoner{},
-		Game:     Game{},
-		Team:     Team{},
-	}
-}
-
 type DB struct {
 	*sql.DB
 }
@@ -29,96 +15,94 @@ func NewDB(database *sql.DB) *DB {
 	return &DB{DB: database}
 }
 
+type Models struct {
+	Summoner
+	Team
+	Game
+}
+
+func NewModels(db *DB) Models {
+	return Models{
+		Summoner: Summoner{},
+		Team:     Team{},
+		Game:     Game{},
+	}
+}
+
 type Summoner struct {
-	SummonerName   string `json:"summoner_name"`
-	Lane           string `json:"lane"`
-	ChampionName   string `json:"champion_name"`
-	Division       string `json:"division"`
-	ChampionPoints int    `json:"champion_points"`
+	Name     string `json:"name"`
+	Role     string `json:"role"`
+	Champion string `json:"champion"`
+	ID       int    `json:"id"`
+	TeamID   int    `json:"team_id"`
 }
 
 type Team struct {
-	TeamName  string     `json:"team_name"`
-	Summoners []Summoner `json:"summoners"`
-	ID        int        `json:"id"`
-	GameID    int        `json:"game_id"`
+	Name          string     `json:"name"`
+	Summoners     []Summoner `json:"summoners"`
+	ID            int        `json:"id"`
+	Rating        int        `json:"rating"`
+	MasteryPoints int        `json:"mastery_points"`
 }
 
 type Game struct {
-	Mode   string `json:"mode"`
-	Winner string `json:"winner"`
-	State  string `json:"state"`
-	ID     int    `json:"id"`
+	Winner   string `json:"winner"`
+	Date     string `json:"date"`
+	TeamBlue Team   `json:"team_blue"`
+	TeamRed  Team   `json:"team_red"`
+	ID       int    `json:"id"`
 }
 
-type Teams struct {
-	Team1 Team
-	Team2 Team
+type GameWithID struct {
+	Winner   string `json:"winner"`
+	Date     string `json:"date"`
+	TeamBlue int    `json:"team_blue"`
+	TeamRed  int    `json:"team_red"`
+	ID       int    `json:"id"`
 }
 
+// InitializeDatabase initializes the database schema.
 func InitializeDatabase(db *sql.DB) error {
 	ctx := context.Background()
 
-	if _, err := db.ExecContext(ctx, `
-	CREATE TABLE IF NOT EXISTS summoners (
-		summoner_name VARCHAR(255),
-		lane VARCHAR(50),
-		champion_name VARCHAR(255),
-		division VARCHAR(50),
-		champion_points INT,
-		PRIMARY KEY (summoner_name, champion_name)
-	);`); err != nil {
-		log.Fatalf("Error creating summoners table: %v", err)
-		return err
-	}
-
-	if _, err := db.ExecContext(ctx, `
-	CREATE TABLE IF NOT EXISTS games (
-		id SERIAL PRIMARY KEY,
-		mode VARCHAR(50),
-		winner VARCHAR(255),
-		state VARCHAR(50)
-	);`); err != nil {
-		log.Fatalf("Error creating games table: %v", err)
-		return err
-	}
-
+	// Create Teams table
 	if _, err := db.ExecContext(ctx, `
 	CREATE TABLE IF NOT EXISTS teams (
 		id SERIAL PRIMARY KEY,
-		game_id INT,
-		team_name VARCHAR(50),
-		FOREIGN KEY (game_id) REFERENCES games(id)
+		name VARCHAR(255),
+		rating INT,
+		mastery_points INT
 	);`); err != nil {
 		log.Fatalf("Error creating teams table: %v", err)
 		return err
 	}
 
+	// Create Summoners table
 	if _, err := db.ExecContext(ctx, `
-	CREATE TABLE IF NOT EXISTS team_summoners (
+	CREATE TABLE IF NOT EXISTS summoners (
+		id SERIAL PRIMARY KEY,
+		name VARCHAR(255),
+		role VARCHAR(50),
+		champion VARCHAR(255),
 		team_id INT,
-		summoner_name VARCHAR(255),
-		lane VARCHAR(50),
-		champion_name VARCHAR(255),
-		division VARCHAR(50),
-		champion_points INT,
-		FOREIGN KEY (team_id) REFERENCES teams(id),
-		FOREIGN KEY (summoner_name, champion_name) REFERENCES summoners(summoner_name, champion_name),
-		PRIMARY KEY (team_id, summoner_name, champion_name)
+		FOREIGN KEY (team_id) REFERENCES teams(id)
 	);`); err != nil {
-		log.Fatalf("Error creating team_summoners table: %v", err)
+		log.Fatalf("Error creating summoners table: %v", err)
 		return err
 	}
 
+	// Create Games table
 	if _, err := db.ExecContext(ctx, `
-	CREATE TABLE IF NOT EXISTS game_teams (
-		game_id INT,
-		team_id INT,
-		FOREIGN KEY (game_id) REFERENCES games(id),
-		FOREIGN KEY (team_id) REFERENCES teams(id),
-		PRIMARY KEY (game_id, team_id)
+	CREATE TABLE IF NOT EXISTS games (
+		id SERIAL PRIMARY KEY,
+		team_blue INT,
+		team_red INT,
+		winner VARCHAR(255),
+		date VARCHAR(50),
+		FOREIGN KEY (team_blue) REFERENCES teams(id),
+		FOREIGN KEY (team_red) REFERENCES teams(id)
 	);`); err != nil {
-		log.Fatalf("Error creating game_teams table: %v", err)
+		log.Fatalf("Error creating games table: %v", err)
 		return err
 	}
 
@@ -126,146 +110,172 @@ func InitializeDatabase(db *sql.DB) error {
 	return nil
 }
 
-func InsertSummoner(db *sql.DB, summoner Summoner) error {
+// InsertSummoner inserts a new summoner into the database.
+func InsertSummoner(db *sql.DB, summoner Summoner) (int, error) {
 	ctx := context.Background()
 
 	query := `
-	INSERT INTO summoners (summoner_name, lane, champion_name, division, champion_points)
-	VALUES ($1, $2, $3, $4, $5)
-	ON CONFLICT (summoner_name, champion_name) DO UPDATE SET
-	lane = EXCLUDED.lane,
-	division = EXCLUDED.division,
-	champion_points = EXCLUDED.champion_points;
+	INSERT INTO summoners (name, role, champion, team_id)
+	VALUES ($1, $2, $3, $4)
+	RETURNING id;
 	`
-	_, err := db.ExecContext(ctx, query, summoner.SummonerName, summoner.Lane, summoner.ChampionName, summoner.Division, summoner.ChampionPoints)
-	return err
+	var summonerID int
+	err := db.QueryRowContext(ctx, query, summoner.Name, summoner.Role, summoner.Champion, summoner.TeamID).Scan(&summonerID)
+	return summonerID, err
 }
 
-func GetSummoner(db *sql.DB, summonerName string, championName string) (*Summoner, error) {
+// InsertTeam inserts a new team into the database.
+func InsertTeam(db *sql.DB, team Team) (int, error) {
 	ctx := context.Background()
 
 	query := `
-	SELECT summoner_name, lane, champion_name, division, champion_points
-	FROM summoners
-	WHERE summoner_name = $1 AND champion_name = $2;
-	`
-	row := db.QueryRowContext(ctx, query, summonerName, championName)
-
-	var summoner Summoner
-	err := row.Scan(&summoner.SummonerName, &summoner.Lane, &summoner.ChampionName, &summoner.Division, &summoner.ChampionPoints)
-	if err != nil {
-		if err == sql.ErrNoRows {
-			return nil, nil // No result is not an error, simply no summoner found
-		}
-		return nil, err
-	}
-	return &summoner, nil
-}
-
-func CreateGame(db *sql.DB, game Game) (int, error) {
-	ctx := context.Background()
-
-	query := `
-	INSERT INTO games (mode, winner, state)
+	INSERT INTO teams (name, rating, mastery_points)
 	VALUES ($1, $2, $3)
 	RETURNING id;
 	`
-	var gameId int
-	err := db.QueryRowContext(ctx, query, game.Mode, game.Winner, game.State).Scan(&gameId)
-	if err != nil {
-		return 0, err
-	}
-	return gameId, nil
+	var teamID int
+	err := db.QueryRowContext(ctx, query, team.Name, team.Rating, team.MasteryPoints).Scan(&teamID)
+	return teamID, err
 }
 
-func CreateTeam(db *sql.DB, team Team) (int, error) {
+// InsertGame inserts a new game into the database.
+func InsertGame(db *sql.DB, game GameWithID) (int, error) {
 	ctx := context.Background()
 
 	query := `
-	INSERT INTO teams (team_name, game_id)
-	VALUES ($1, $2)
+	INSERT INTO games (team_blue, team_red, winner, date)
+	VALUES ($1, $2, $3, $4)
 	RETURNING id;
 	`
-	var teamId int
-	err := db.QueryRowContext(ctx, query, team.TeamName, team.GameID).Scan(&teamId)
+	var gameID int
+	err := db.QueryRowContext(ctx, query, game.TeamBlue, game.TeamRed, "", game.Date).Scan(&gameID)
+	return gameID, err
+}
+
+// GetGame retrieves a game by its ID from the database.
+func GetGame(db *sql.DB, gameID int) (*Game, error) {
+	ctx := context.Background()
+
+	query := `
+	SELECT id, team_blue, team_red, winner, date
+	FROM games
+	WHERE id = $1;
+	`
+	row := db.QueryRowContext(ctx, query, gameID)
+
+	var game Game
+	err := row.Scan(&game.ID, &game.TeamBlue.ID, &game.TeamRed.ID, &game.Winner, &game.Date)
 	if err != nil {
-		return 0, err
+		if err == sql.ErrNoRows {
+			return nil, nil // No result is not an error, simply no game found
+		}
+		return nil, err
 	}
 
-	for _, summoner := range team.Summoners {
-		if err := InsertSummonerToTeam(db, teamId, summoner); err != nil {
-			return 0, err
+	// Fetch teams and their summoners
+	game.TeamBlue, err = GetTeamFull(db, game.TeamBlue.ID)
+	if err != nil {
+		return nil, err
+	}
+
+	game.TeamRed, err = GetTeamFull(db, game.TeamRed.ID)
+	if err != nil {
+		return nil, err
+	}
+
+	return &game, nil
+}
+
+// GetTeamFull retrieves a team and its summoners by the team ID.
+func GetTeamFull(db *sql.DB, teamID int) (Team, error) {
+	ctx := context.Background()
+
+	var team Team
+	err := db.QueryRowContext(ctx, "SELECT id, name, rating, mastery_points FROM teams WHERE id = $1", teamID).Scan(&team.ID, &team.Name, &team.Rating, &team.MasteryPoints)
+	if err != nil {
+		return team, err
+	}
+
+	rows, err := db.QueryContext(ctx, "SELECT id, name, role, champion, team_id FROM summoners WHERE team_id = $1", teamID)
+	if err != nil {
+		return team, err
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		var summoner Summoner
+		if err := rows.Scan(&summoner.ID, &summoner.Name, &summoner.Role, &summoner.Champion, &summoner.TeamID); err != nil {
+			return team, err
+		}
+		team.Summoners = append(team.Summoners, summoner)
+	}
+
+	return team, nil
+}
+
+// UpdateSummoners updates the champion for a list of summoners in the database.
+func UpdateSummoners(db *sql.DB, summoners []Summoner) error {
+	ctx := context.Background()
+
+	query := `
+	UPDATE summoners
+	SET champion = $1
+	WHERE name = $2 AND team_id = $3;
+	`
+
+	for _, summoner := range summoners {
+		_, err := db.ExecContext(ctx, query, summoner.Champion, summoner.Name, summoner.TeamID)
+		if err != nil {
+			return fmt.Errorf("error updating summoner %s: %w", summoner.Name, err)
 		}
 	}
 
-	return teamId, nil
+	return nil
 }
 
-func InsertSummonerToTeam(db *sql.DB, teamId int, summoner Summoner) error {
+// SwapSummoners swaps the teams of two summoners for a specific game.
+func SwapSummoners(db *sql.DB, gameID int, summoner1Name string, summoner2Name string) error {
 	ctx := context.Background()
 
+	// Retrieve team IDs of both summoners and ensure they belong to the specified game
+	var teamID1, teamID2 int
 	query := `
-	INSERT INTO team_summoners (team_id, summoner_name, lane, champion_name, division, champion_points)
-	VALUES ($1, $2, $3, $4, $5, $6)
-	ON CONFLICT (team_id, summoner_name, champion_name) DO UPDATE SET
-	lane = EXCLUDED.lane,
-	division = EXCLUDED.division,
-	champion_points = EXCLUDED.champion_points;
+		SELECT s1.team_id, s2.team_id
+		FROM summoners s1, summoners s2
+		WHERE s1.name = $1 AND s2.name = $2
+		AND (s1.team_id = (SELECT team_blue FROM games WHERE id = $3) OR s1.team_id = (SELECT team_red FROM games WHERE id = $3))
+		AND (s2.team_id = (SELECT team_blue FROM games WHERE id = $3) OR s2.team_id = (SELECT team_red FROM games WHERE id = $3));
 	`
-	_, err := db.ExecContext(ctx, query, teamId, summoner.SummonerName, summoner.Lane, summoner.ChampionName, summoner.Division, summoner.ChampionPoints)
-	return err
-}
-
-func InsertGameTeam(db *sql.DB, gameId int, teamId int) error {
-	ctx := context.Background()
-
-	query := `
-	INSERT INTO game_teams (game_id, team_id)
-	VALUES ($1, $2);
-	`
-	_, err := db.ExecContext(ctx, query, gameId, teamId)
-	return err
-}
-
-func GetTeamIDByGameAndName(db *sql.DB, gameId int, teamName string) (int, error) {
-	ctx := context.Background()
-
-	query := `
-	SELECT id FROM teams WHERE team_name = $1 AND game_id = $2;
-	`
-	var teamId int
-	err := db.QueryRowContext(ctx, query, teamName, gameId).Scan(&teamId)
+	err := db.QueryRowContext(ctx, query, summoner1Name, summoner2Name, gameID).Scan(&teamID1, &teamID2)
 	if err != nil {
-		return 0, err
+		return err
 	}
-	return teamId, nil
-}
 
-func GetTeamIDBySummoner(db *sql.DB, summonerName string) (int, error) {
-	ctx := context.Background()
-
-	query := `
-	SELECT team_id FROM team_summoners WHERE summoner_name = $1;
-	`
-	var teamId int
-	err := db.QueryRowContext(ctx, query, summonerName).Scan(&teamId)
+	// Swap the teams
+	_, err = db.ExecContext(ctx, "UPDATE summoners SET team_id = $1 WHERE name = $2", teamID2, summoner1Name)
 	if err != nil {
-		return 0, err
+		return err
 	}
-	return teamId, nil
-}
-
-func MoveSummonerTeam(db *sql.DB, fromTeamId int, toTeamId int, summonerName string) error {
-	ctx := context.Background()
-
-	query := `
-	UPDATE team_summoners SET team_id = $1 WHERE team_id = $2 AND summoner_name = $3;
-	`
-	_, err := db.ExecContext(ctx, query, toTeamId, fromTeamId, summonerName)
+	_, err = db.ExecContext(ctx, "UPDATE summoners SET team_id = $1 WHERE name = $2", teamID1, summoner2Name)
 	return err
 }
 
-func SetWinner(db *sql.DB, gameId int, winner string) error {
+// Clear teams in a game (for shuffling)
+func ClearTeams(db *sql.DB, gameID int) error {
+	ctx := context.Background()
+	query := `
+    DELETE FROM summoners WHERE team_id IN (
+        SELECT team_blue FROM games WHERE id = $1
+        UNION
+        SELECT team_red FROM games WHERE id = $1
+    );
+    `
+	_, err := db.ExecContext(ctx, query, gameID)
+	return err
+}
+
+// SetWinner sets the winner of a game.
+func SetWinner(db *sql.DB, gameID int, winner string) error {
 	ctx := context.Background()
 
 	query := `
@@ -273,76 +283,50 @@ func SetWinner(db *sql.DB, gameId int, winner string) error {
 	SET winner = $1
 	WHERE id = $2;
 	`
-	_, err := db.ExecContext(ctx, query, winner, gameId)
+	_, err := db.ExecContext(ctx, query, winner, gameID)
 	return err
 }
 
-func GetGame(db *sql.DB, gameId int) (*Game, error) {
+// GetSummonerLane retrieves the lane of a summoner for a specific game.
+func GetSummonerLane(db *sql.DB, summonerName string, gameID int) (string, error) {
+	ctx := context.Background()
+
+	var lane string
+	query := `
+		SELECT role
+		FROM summoners
+		WHERE name = $1 AND team_id IN (
+			SELECT team_blue FROM games WHERE id = $2
+			UNION
+			SELECT team_red FROM games WHERE id = $2
+		);
+	`
+	err := db.QueryRowContext(ctx, query, summonerName, gameID).Scan(&lane)
+	if err != nil {
+		return "", err
+	}
+
+	return lane, nil
+}
+
+// UpdateSummonerChampion updates the champion of a summoner.
+func UpdateSummonerChampion(db *sql.DB, summonerName string, champion string) error {
 	ctx := context.Background()
 
 	query := `
-	SELECT id, mode, winner, state
-	FROM games
-	WHERE id = $1;
+		UPDATE summoners
+		SET champion = $1
+		WHERE name = $2;
 	`
-	row := db.QueryRowContext(ctx, query, gameId)
-
-	var game Game
-	err := row.Scan(&game.ID, &game.Mode, &game.Winner, &game.State)
-	if err != nil {
-		if err == sql.ErrNoRows {
-			return nil, nil // No result is not an error, simply no game found
-		}
-		return nil, err
-	}
-	return &game, nil
+	_, err := db.ExecContext(ctx, query, champion, summonerName)
+	return err
 }
 
-func GetTeamsByGameID(db *sql.DB, gameId int) (*Teams, error) {
-	ctx := context.Background()
-
-	query := `
-	SELECT t.id, t.team_name, ts.summoner_name, ts.lane, ts.champion_name, ts.division, ts.champion_points
-	FROM teams t
-	JOIN team_summoners ts ON t.id = ts.team_id
-	WHERE t.game_id = $1;
-	`
-	rows, err := db.QueryContext(ctx, query, gameId)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-
-	teams := &Teams{
-		Team1: Team{Summoners: []Summoner{}},
-		Team2: Team{Summoners: []Summoner{}},
-	}
-	for rows.Next() {
-		var teamName, summonerName, lane, championName, division string
-		var championPoints, teamID int
-		if err := rows.Scan(&teamID, &teamName, &summonerName, &lane, &championName, &division, &championPoints); err != nil {
-			return nil, err
-		}
-		summoner := Summoner{
-			SummonerName:   summonerName,
-			Lane:           lane,
-			ChampionName:   championName,
-			Division:       division,
-			ChampionPoints: championPoints,
-		}
-		if teamName == teams.Team1.TeamName {
-			teams.Team1.Summoners = append(teams.Team1.Summoners, summoner)
-		} else {
-			teams.Team2.Summoners = append(teams.Team2.Summoners, summoner)
-		}
-	}
-	return teams, nil
-}
-
+// DropDatabase drops all tables from the database.
 func DropDatabase(db *sql.DB) error {
 	ctx := context.Background()
 
-	tables := []string{"game_teams", "team_summoners", "teams", "games", "summoners"}
+	tables := []string{"summoners", "teams", "games"}
 
 	for _, table := range tables {
 		if _, err := db.ExecContext(ctx, fmt.Sprintf("DROP TABLE IF EXISTS %s CASCADE;", table)); err != nil {

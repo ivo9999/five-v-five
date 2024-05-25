@@ -33,12 +33,12 @@ func (app *Config) routes() http.Handler {
 func (h *Handlers) RegisterRoutes(r chi.Router) {
 	r.Use(middleware.Logger)
 
-	r.Post("/teams", h.CreateTeams)               // New endpoint to create balanced teams
-	r.Post("/games", h.InitializeGame)            // Updated endpoint to create a game from two teams
-	r.Get("/games/{gameId}", h.GetGame)           // New endpoint to get a game by ID
-	r.Post("/games/champions", h.GetChamps)       // Updated endpoint to get champions for a list of players and lanes
-	r.Get("/champion", h.GetChampion)             // Updated endpoint to get a champion for a player and lane
-	r.Post("/games/{gameId}/winner", h.SetWinner) // Updated endpoint to set the winner of a game
-	r.Post("/games/{gameId}/move", h.MovePlayer)  // Updated endpoint to move a player between teams
+	r.Post("/games", h.InitializeGame)
+	r.Get("/games/{gameId}", h.GetGame)
+	r.Post("/games/{gameId}/shuffle", h.ShuffleTeams)
+	r.Post("/games/{gameId}/swap", h.SwapSummoners)
+	r.Get("/games/{gameId}/champions", h.GetChampions)
+	r.Post("/games/{gameId}/newChamp", h.GetNewChampion)
+	r.Post("/games/{gameId}/winner", h.SetWinner)
 	r.Post("/dropdb", h.DropDB)
 }

@@ -1,11 +1,14 @@
 package main
 
 import (
+	"context"
 	"errors"
+	"fmt"
 	"game-management-micro/data"
 	proto "game-management-micro/riot"
 	"net/http"
 	"strconv"
+	"time"
 
 	"github.com/go-chi/chi/v5"
 )
@@ -24,10 +27,12 @@ func NewHandlers(db *data.DB, riotAPI proto.RiotAPIServiceClient, config *Config
 	}
 }
 
-// Create balanced teams from a list of summoners
-func (h *Handlers) CreateTeams(w http.ResponseWriter, r *http.Request) {
+// Create a new game with balanced teams from a list of summoners
+func (h *Handlers) InitializeGame(w http.ResponseWriter, r *http.Request) {
 	var request struct {
 		Summoners []string `json:"summoners"`
+		TeamRed   string   `json:"team_red"`
+		TeamBlue  string   `json:"team_blue"`
 	}
 
 	if err := h.Config.readJSON(w, r, &request); err != nil {
@@ -45,197 +50,148 @@ func (h *Handlers) CreateTeams(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	response := jsonResponse{
-		Error:   false,
-		Message: "Teams created successfully",
-		Data:    grpcResponse,
-	}
+	teamBlue := data.Team{Name: request.TeamBlue, Rating: 0, MasteryPoints: 0}
+	teamRed := data.Team{Name: request.TeamRed, Rating: 0, MasteryPoints: 0}
 
-	h.Config.writeJSON(w, http.StatusOK, response)
-}
-
-// Initialize a new game with given teams
-func (h *Handlers) InitializeGame(w http.ResponseWriter, r *http.Request) {
-	var request struct {
-		Team1 struct {
-			TeamName  string   `json:"team_name"`
-			Summoners []string `json:"summoners"`
-		} `json:"team1"`
-		Team2 struct {
-			TeamName  string   `json:"team_name"`
-			Summoners []string `json:"summoners"`
-		} `json:"team2"`
-	}
-
-	if err := h.Config.readJSON(w, r, &request); err != nil {
-		h.Config.errorJSON(w, err)
-		return
-	}
-
-	// Create the game
-	game := data.Game{
-		Mode:  "standard", // or any other mode
-		State: "new",
-	}
-
-	gameId, err := data.CreateGame(h.DB.DB, game)
+	teamBlueID, err := data.InsertTeam(h.DB.DB, teamBlue)
 	if err != nil {
 		h.Config.errorJSON(w, err, http.StatusInternalServerError)
 		return
 	}
-
-	// Assign the game ID to the teams and determine lanes based on summoner index
-	team1 := data.Team{GameID: gameId, TeamName: request.Team1.TeamName, Summoners: []data.Summoner{}}
-	team2 := data.Team{GameID: gameId, TeamName: request.Team2.TeamName, Summoners: []data.Summoner{}}
+	teamRedID, err := data.InsertTeam(h.DB.DB, teamRed)
+	if err != nil {
+		h.Config.errorJSON(w, err, http.StatusInternalServerError)
+		return
+	}
 
 	lanes := []string{"top", "jungle", "mid", "adc", "support"}
 
-	for i, summonerName := range request.Team1.Summoners {
-		summoner := data.Summoner{SummonerName: summonerName, Lane: lanes[i]}
-		team1.Summoners = append(team1.Summoners, summoner)
-
-		// Insert summoner into the summoners table
-		if err := data.InsertSummoner(h.DB.DB, summoner); err != nil {
+	for i, summonerName := range grpcResponse.Team1 {
+		summoner := data.Summoner{Name: summonerName, Role: lanes[i%5], TeamID: teamBlueID}
+		if _, err := data.InsertSummoner(h.DB.DB, summoner); err != nil {
 			h.Config.errorJSON(w, err, http.StatusInternalServerError)
 			return
 		}
 	}
 
-	for i, summonerName := range request.Team2.Summoners {
-		summoner := data.Summoner{SummonerName: summonerName, Lane: lanes[i]}
-		team2.Summoners = append(team2.Summoners, summoner)
-
-		// Insert summoner into the summoners table
-		if err := data.InsertSummoner(h.DB.DB, summoner); err != nil {
+	for i, summonerName := range grpcResponse.Team2 {
+		summoner := data.Summoner{Name: summonerName, Role: lanes[i%5], TeamID: teamRedID}
+		if _, err := data.InsertSummoner(h.DB.DB, summoner); err != nil {
 			h.Config.errorJSON(w, err, http.StatusInternalServerError)
 			return
 		}
 	}
 
-	// Create teams and insert summoners
-	team1ID, err := data.CreateTeam(h.DB.DB, team1)
+	game := data.GameWithID{
+		TeamBlue: teamBlueID,
+		TeamRed:  teamRedID,
+		Winner:   "",
+		Date:     time.Now().Format("2006-01-02"),
+	}
+
+	gameID, err := data.InsertGame(h.DB.DB, game)
 	if err != nil {
 		h.Config.errorJSON(w, err, http.StatusInternalServerError)
 		return
 	}
 
-	team2ID, err := data.CreateTeam(h.DB.DB, team2)
-	if err != nil {
-		h.Config.errorJSON(w, err, http.StatusInternalServerError)
-		return
-	}
-
-	// Insert into game_teams
-	if err := data.InsertGameTeam(h.DB.DB, gameId, team1ID); err != nil {
-		h.Config.errorJSON(w, err, http.StatusInternalServerError)
-		return
-	}
-	if err := data.InsertGameTeam(h.DB.DB, gameId, team2ID); err != nil {
-		h.Config.errorJSON(w, err, http.StatusInternalServerError)
-		return
-	}
-
-	h.Config.writeJSON(w, http.StatusCreated, map[string]int{"game_id": gameId})
+	h.Config.writeJSON(w, http.StatusCreated, map[string]int{"game_id": gameID})
 }
 
-// Get a game by its ID, including the details of both teams
+// Get a game by its ID, including the details of both teams and summoners
 func (h *Handlers) GetGame(w http.ResponseWriter, r *http.Request) {
-	gameId, err := strconv.Atoi(chi.URLParam(r, "gameId"))
+	gameID, err := strconv.Atoi(chi.URLParam(r, "gameId"))
 	if err != nil {
 		h.Config.errorJSON(w, err, http.StatusBadRequest)
 		return
 	}
 
-	game, err := data.GetGame(h.DB.DB, gameId)
+	game, err := data.GetGame(h.DB.DB, gameID)
 	if err != nil {
 		h.Config.errorJSON(w, err, http.StatusInternalServerError)
 		return
 	}
 
 	if game == nil {
-		h.Config.errorJSON(w, errors.New("Game not found"), http.StatusNotFound)
+		h.Config.errorJSON(w, errors.New("game not found"), http.StatusNotFound)
 		return
 	}
 
-	teams, err := data.GetTeamsByGameID(h.DB.DB, gameId)
-	if err != nil {
-		h.Config.errorJSON(w, err, http.StatusInternalServerError)
-		return
-	}
-
-	response := struct {
-		ID     int         `json:"id"`
-		Mode   string      `json:"mode"`
-		Winner string      `json:"winner"`
-		State  string      `json:"state"`
-		Teams  *data.Teams `json:"teams"`
-	}{
-		ID:     game.ID,
-		Mode:   game.Mode,
-		Winner: game.Winner,
-		State:  game.State,
-		Teams:  teams,
-	}
-
-	h.Config.writeJSON(w, http.StatusOK, response)
+	h.Config.writeJSON(w, http.StatusOK, game)
 }
 
-// Get champions for a game
-func (h *Handlers) GetChamps(w http.ResponseWriter, r *http.Request) {
-	gameId, err := strconv.Atoi(chi.URLParam(r, "gameId"))
+// Shuffle the teams in a game
+func (h *Handlers) ShuffleTeams(w http.ResponseWriter, r *http.Request) {
+	gameID, err := strconv.Atoi(chi.URLParam(r, "gameId"))
 	if err != nil {
 		h.Config.errorJSON(w, err, http.StatusBadRequest)
 		return
 	}
 
-	teams, err := data.GetTeamsByGameID(h.DB.DB, gameId)
+	game, err := data.GetGame(h.DB.DB, gameID)
 	if err != nil {
 		h.Config.errorJSON(w, err, http.StatusInternalServerError)
 		return
 	}
 
-	var team1Summoners []*proto.SummonerLane
-	var team2Summoners []*proto.SummonerLane
-
-	for _, summoner := range teams.Team1.Summoners {
-		team1Summoners = append(team1Summoners, &proto.SummonerLane{
-			SummonerName: summoner.SummonerName,
-			Lane:         summoner.Lane,
-		})
+	if game == nil {
+		h.Config.errorJSON(w, errors.New("game not found"), http.StatusNotFound)
+		return
 	}
 
-	for _, summoner := range teams.Team2.Summoners {
-		team2Summoners = append(team2Summoners, &proto.SummonerLane{
-			SummonerName: summoner.SummonerName,
-			Lane:         summoner.Lane,
-		})
+	summonerNames := getSummonerNames(game)
+
+	grpcRequest := &proto.GetTeamsRequest{
+		Summoners: summonerNames,
 	}
 
-	grpcRequest := &proto.GetChampionsByTeamsRequest{
-		Team1: team1Summoners,
-		Team2: team2Summoners,
-	}
-
-	grpcResponse, err := h.RiotAPI.GetChampionsByTeams(r.Context(), grpcRequest)
+	grpcResponse, err := h.RiotAPI.GetTeams(r.Context(), grpcRequest)
 	if err != nil {
 		h.Config.errorJSON(w, err, http.StatusInternalServerError)
 		return
 	}
 
-	response := jsonResponse{
+	if err := data.ClearTeams(h.DB.DB, game.ID); err != nil {
+		h.Config.errorJSON(w, err, http.StatusInternalServerError)
+		return
+	}
+
+	// Assign new teams
+	lanes := []string{"top", "jungle", "mid", "adc", "support"}
+
+	for i, summonerName := range grpcResponse.Team1 {
+		summoner := data.Summoner{Name: summonerName, Role: lanes[i%5], TeamID: game.TeamBlue.ID}
+		if _, err := data.InsertSummoner(h.DB.DB, summoner); err != nil {
+			h.Config.errorJSON(w, err, http.StatusInternalServerError)
+			return
+		}
+	}
+
+	for i, summonerName := range grpcResponse.Team2 {
+		summoner := data.Summoner{Name: summonerName, Role: lanes[i%5], TeamID: game.TeamRed.ID}
+		if _, err := data.InsertSummoner(h.DB.DB, summoner); err != nil {
+			h.Config.errorJSON(w, err, http.StatusInternalServerError)
+			return
+		}
+	}
+
+	h.Config.writeJSON(w, http.StatusOK, jsonResponse{
 		Error:   false,
-		Message: "Champions retrieved successfully",
-		Data:    grpcResponse,
-	}
-
-	h.Config.writeJSON(w, http.StatusOK, response)
+		Message: "Teams shuffled successfully",
+	})
 }
 
-// Get a champion for a player and lane
-func (h *Handlers) GetChampion(w http.ResponseWriter, r *http.Request) {
+// Swap summoners between teams in a game
+func (h *Handlers) SwapSummoners(w http.ResponseWriter, r *http.Request) {
+	gameID, err := strconv.Atoi(chi.URLParam(r, "gameId"))
+	if err != nil {
+		h.Config.errorJSON(w, err, http.StatusBadRequest)
+		return
+	}
+
 	var request struct {
-		SummonerName string `json:"summoner_name"`
-		Lane         string `json:"lane"`
+		Summoner1 string `json:"summoner1"`
+		Summoner2 string `json:"summoner2"`
 	}
 
 	if err := h.Config.readJSON(w, r, &request); err != nil {
@@ -243,29 +199,168 @@ func (h *Handlers) GetChampion(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	grpcRequest := &proto.ChampionBySummonerAndLaneRequest{
-		SummonerId: request.SummonerName,
-		Lane:       request.Lane,
-	}
-
-	grpcResponse, err := h.RiotAPI.GetChampionBySummonerAndLane(r.Context(), grpcRequest)
+	err = data.SwapSummoners(h.DB.DB, gameID, request.Summoner1, request.Summoner2)
 	if err != nil {
 		h.Config.errorJSON(w, err, http.StatusInternalServerError)
 		return
 	}
 
-	response := jsonResponse{
-		Error:   false,
-		Message: "Champion retrieved successfully",
-		Data:    grpcResponse,
+	game, err := data.GetGame(h.DB.DB, gameID)
+	if err != nil {
+		h.Config.errorJSON(w, err, http.StatusInternalServerError)
+		return
 	}
 
-	h.Config.writeJSON(w, http.StatusOK, response)
+	h.Config.writeJSON(w, http.StatusOK, jsonResponse{
+		Error:   false,
+		Message: "Summoners swapped successfully",
+		Data:    game,
+	})
+}
+
+// GetChampions handles the request to get balanced champions for a game.
+func (h *Handlers) GetChampions(w http.ResponseWriter, r *http.Request) {
+	gameID, err := strconv.Atoi(chi.URLParam(r, "gameId"))
+	if err != nil {
+		h.Config.errorJSON(w, err, http.StatusBadRequest)
+		return
+	}
+
+	game, err := data.GetGame(h.DB.DB, gameID)
+	if err != nil {
+		h.Config.errorJSON(w, err, http.StatusInternalServerError)
+		return
+	}
+
+	if game == nil {
+		h.Config.errorJSON(w, errors.New("game not found"), http.StatusNotFound)
+		return
+	}
+
+	team1, team2 := getSummonerInfo(game)
+
+	// Construct the gRPC request
+	grpcRequest := &proto.GetChampionsByTeamsRequest{
+		Team1: make([]*proto.SummonerLane, len(team1)),
+		Team2: make([]*proto.SummonerLane, len(team2)),
+	}
+
+	for i, summoner := range team1 {
+		grpcRequest.Team1[i] = &proto.SummonerLane{
+			SummonerName: summoner.SummonerName,
+			Lane:         summoner.Lane,
+		}
+	}
+
+	for i, summoner := range team2 {
+		grpcRequest.Team2[i] = &proto.SummonerLane{
+			SummonerName: summoner.SummonerName,
+			Lane:         summoner.Lane,
+		}
+	}
+
+	grpcResponse, err := h.RiotAPI.GetChampionsByTeams(context.Background(), grpcRequest)
+	if err != nil {
+		h.Config.errorJSON(w, err, http.StatusInternalServerError)
+		return
+	}
+
+	// Update the summoners with the received champions
+	var updatedSummoners []data.Summoner
+	for _, champion := range grpcResponse.Team1Champions {
+		updatedSummoners = append(updatedSummoners, data.Summoner{
+			Name:     champion.SummonerName,
+			Role:     champion.Lane,
+			Champion: champion.ChampionName,
+			TeamID:   game.TeamBlue.ID, // Assuming Team1 is TeamBlue
+		})
+	}
+
+	for _, champion := range grpcResponse.Team2Champions {
+		updatedSummoners = append(updatedSummoners, data.Summoner{
+			Name:     champion.SummonerName,
+			Role:     champion.Lane,
+			Champion: champion.ChampionName,
+			TeamID:   game.TeamRed.ID, // Assuming Team2 is TeamRed
+		})
+	}
+
+	fmt.Printf("Updated Summoners: %+v\n", updatedSummoners)
+
+	err = data.UpdateSummoners(h.DB.DB, updatedSummoners)
+	if err != nil {
+		h.Config.errorJSON(w, err, http.StatusInternalServerError)
+		return
+	}
+
+	game, _ = data.GetGame(h.DB.DB, gameID)
+
+	h.Config.writeJSON(w, http.StatusOK, jsonResponse{
+		Error:   false,
+		Message: "Balanced champions retrieved and updated successfully",
+		Data:    game,
+	})
+}
+
+// Get a new champion for a summoner in a game
+func (h *Handlers) GetNewChampion(w http.ResponseWriter, r *http.Request) {
+	gameID, err := strconv.Atoi(chi.URLParam(r, "gameId"))
+	if err != nil {
+		h.Config.errorJSON(w, err, http.StatusBadRequest)
+		return
+	}
+
+	var request struct {
+		SummonerName string `json:"summoner_name"`
+	}
+
+	if err := h.Config.readJSON(w, r, &request); err != nil {
+		h.Config.errorJSON(w, err)
+		return
+	}
+
+	// Retrieve the summoner's lane from the database
+	lane, err := data.GetSummonerLane(h.DB.DB, request.SummonerName, gameID)
+	if err != nil {
+		h.Config.errorJSON(w, err, http.StatusInternalServerError)
+		return
+	}
+
+	// Construct the gRPC request to get a new champion for the summoner and lane
+	grpcRequest := &proto.ChampionBySummonerAndLaneRequest{
+		SummonerId: request.SummonerName,
+		Lane:       lane,
+	}
+
+	grpcResponse, err := h.RiotAPI.GetChampionBySummonerAndLane(context.Background(), grpcRequest)
+	if err != nil {
+		h.Config.errorJSON(w, err, http.StatusInternalServerError)
+		return
+	}
+
+	// Update the summoner with the new champion
+	err = data.UpdateSummonerChampion(h.DB.DB, request.SummonerName, grpcResponse.Champion)
+	if err != nil {
+		h.Config.errorJSON(w, err, http.StatusInternalServerError)
+		return
+	}
+
+	game, err := data.GetGame(h.DB.DB, gameID)
+	if err != nil {
+		h.Config.errorJSON(w, err, http.StatusInternalServerError)
+		return
+	}
+
+	h.Config.writeJSON(w, http.StatusOK, jsonResponse{
+		Error:   false,
+		Message: "New champion assigned successfully",
+		Data:    game,
+	})
 }
 
 // Set the winner of a game
 func (h *Handlers) SetWinner(w http.ResponseWriter, r *http.Request) {
-	gameId, err := strconv.Atoi(chi.URLParam(r, "gameId"))
+	gameID, err := strconv.Atoi(chi.URLParam(r, "gameId"))
 	if err != nil {
 		h.Config.errorJSON(w, err, http.StatusBadRequest)
 		return
@@ -280,7 +375,7 @@ func (h *Handlers) SetWinner(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	err = data.SetWinner(h.DB.DB, gameId, request.Winner)
+	err = data.SetWinner(h.DB.DB, gameID, request.Winner)
 	if err != nil {
 		h.Config.errorJSON(w, err, http.StatusInternalServerError)
 		return
@@ -290,51 +385,6 @@ func (h *Handlers) SetWinner(w http.ResponseWriter, r *http.Request) {
 		Error:   false,
 		Message: "Winner set successfully",
 	})
-}
-
-// Move a player between teams
-func (h *Handlers) MovePlayer(w http.ResponseWriter, r *http.Request) {
-	gameId, err := strconv.Atoi(chi.URLParam(r, "gameId"))
-	if err != nil {
-		h.Config.errorJSON(w, err, http.StatusBadRequest)
-		return
-	}
-
-	var request struct {
-		SummonerName string `json:"summoner_name"`
-		ToTeam       string `json:"to_team"`
-	}
-
-	if err := h.Config.readJSON(w, r, &request); err != nil {
-		h.Config.errorJSON(w, err)
-		return
-	}
-
-	fromTeamID, err := data.GetTeamIDBySummoner(h.DB.DB, request.SummonerName)
-	if err != nil {
-		h.Config.errorJSON(w, err, http.StatusInternalServerError)
-		return
-	}
-
-	toTeamID, err := data.GetTeamIDByGameAndName(h.DB.DB, gameId, request.ToTeam)
-	if err != nil {
-		h.Config.errorJSON(w, err, http.StatusInternalServerError)
-		return
-	}
-
-	err = data.MoveSummonerTeam(h.DB.DB, fromTeamID, toTeamID, request.SummonerName)
-	if err != nil {
-		h.Config.errorJSON(w, err, http.StatusInternalServerError)
-		return
-	}
-
-	game, err := data.GetGame(h.DB.DB, gameId)
-	if err != nil {
-		h.Config.errorJSON(w, err, http.StatusInternalServerError)
-		return
-	}
-
-	h.Config.writeJSON(w, http.StatusOK, game)
 }
 
 // Drop the database
