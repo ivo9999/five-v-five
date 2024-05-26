@@ -8,7 +8,7 @@ import (
 )
 
 func ConnectGRPC() *grpc.ClientConn {
-	conn, err := grpc.Dial("localhost:50001", grpc.WithTransportCredentials(insecure.NewCredentials()), grpc.WithBlock())
+	conn, err := grpc.Dial("riot-service:50001", grpc.WithTransportCredentials(insecure.NewCredentials()), grpc.WithBlock())
 	if err != nil {
 		fmt.Println("Failed to connect to gRPC server:", err)
 		return nil

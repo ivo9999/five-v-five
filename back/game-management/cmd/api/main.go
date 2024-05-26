@@ -19,9 +19,9 @@ const webPort = "8080"
 var counts int64
 
 type Config struct {
+	RiotAPI proto.RiotAPIServiceClient
 	DB      *data.DB
 	Models  data.Models
-	RiotAPI proto.RiotAPIServiceClient
 }
 
 func main() {
@@ -67,7 +67,7 @@ func main() {
 
 func connectToDB() *sql.DB {
 	for {
-		connection, err := openDB("host=localhost port=5433 user=postgres dbname=postgres sslmode=disable connect_timeout=5 password=admin")
+		connection, err := openDB("host=game-postgres port=5432 user=postgres dbname=postgres sslmode=disable connect_timeout=5 password=admin")
 		if err != nil {
 			fmt.Println("Postgres not yet ready ...")
 			counts++
