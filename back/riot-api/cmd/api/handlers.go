@@ -10,6 +10,9 @@ import (
 	"sort"
 
 	"github.com/joho/godotenv"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
+	"google.golang.org/protobuf/types/known/emptypb"
 )
 
 func (s *RiotAPIServer) GetSummonerByName(ctx context.Context, req *riot.SummonerByNameRequest) (*riot.SummonerResponse, error) {
@@ -386,4 +389,28 @@ func (s *RiotAPIServer) GetTeams(ctx context.Context, req *riot.GetTeamsRequest)
 	}
 
 	return resp, nil
+}
+
+func (s *RiotAPIServer) SeedDB(ctx context.Context, in *emptypb.Empty) (*emptypb.Empty, error) {
+	db := s.db
+
+	// Seed lanes table
+	if err := data.SeedLanesTable(db); err != nil {
+		return nil, status.Errorf(codes.Internal, "failed to seed lanes table: %v", err)
+	}
+
+	// Get champions
+	champs := data.GetChampions()
+
+	// Seed champions table
+	if err := data.SeedChampionsTable(db, champs); err != nil {
+		return nil, status.Errorf(codes.Internal, "failed to seed champions table: %v", err)
+	}
+
+	// Seed champion lanes
+	if err := data.SeedChampionLanes(db, champs); err != nil {
+		return nil, status.Errorf(codes.Internal, "failed to seed champion lanes: %v", err)
+	}
+
+	return &emptypb.Empty{}, nil
 }

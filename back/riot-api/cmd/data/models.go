@@ -193,20 +193,6 @@ func InitializeDatabase(db *sql.DB) error {
 		return err
 	}
 
-	//	if err := SeedLanesTable(db); err != nil {
-	//		return nil
-	//	}
-
-	//	champs := GetChampions()
-
-	//	if err := SeedChampionsTable(db, champs); err != nil {
-	//		return nil
-	//	}
-
-	//	if err := SeedChampionLanes(db, champs); err != nil {
-	//		return nil
-	//	}
-
 	log.Println("Database initialized successfully.")
 	return nil
 }

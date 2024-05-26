@@ -5,6 +5,8 @@ package riot;
 
 option go_package = "/riot";
 
+import "google/protobuf/empty.proto";
+
 service RiotAPIService {
     rpc GetSummonerByName(SummonerByNameRequest) returns (SummonerResponse) {}
     rpc GetChampionMasteriesBySummoner(ChampionMasteriesRequest) returns (ChampionMasteriesResponse) {}
@@ -14,7 +16,8 @@ service RiotAPIService {
     rpc UpdateLeagueEntriesBySummoner(LeagueEntriesRequest) returns (LeagueEntriesResponse) {}
     rpc GetChampionBySummonerAndLane(ChampionBySummonerAndLaneRequest) returns (ChampionBySummonerAndLaneResponse) {}
     rpc GetChampionsByTeams(GetChampionsByTeamsRequest) returns (GetChampionsByTeamsResponse) {}
-    rpc GetTeams(GetTeamsRequest) returns (GetTeamsResponse) {} // New RPC
+    rpc GetTeams(GetTeamsRequest) returns (GetTeamsResponse) {} 
+    rpc SeedDB(google.protobuf.Empty) returns (google.protobuf.Empty) {}
 }
 
 message ChampionBySummonerAndLaneRequest {
