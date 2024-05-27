@@ -1,10 +1,14 @@
-function App() {
+import { Button } from "../@/components/ui/button";
 
+function App() {
   return (
-    <div className="bg-gray-800 h-screen">
-      <h1 className='bg-red-200'>wowowowowo</h1>
+    <div className="h-screen flex bg-gray-800 items-center justify-center">
+      <Button className="bg-black text-white py-2 px-4 rounded">
+        Button
+      </Button>
     </div>
-  )
+  );
 }
 
-export default App
+export default App;
+
