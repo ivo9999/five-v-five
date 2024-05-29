@@ -1,6 +1,7 @@
 import React from 'react';
 import { Button, } from '../components/ui/button';
 import { Input as TextInput } from '../components/ui/input';
+import { Link } from 'react-router-dom';
 
 const SignupPage: React.FC = () => {
   return (
@@ -14,7 +15,7 @@ const SignupPage: React.FC = () => {
           <Button className="w-full">Sign Up</Button>
         </div>
         <p className="mt-6 text-center text-light">
-          Already have an account? <a href="/login" className="text-white underline">Log In</a>
+          Already have an account? <Link to="/login" className="text-white underline">Log In</Link>
         </p>
       </div>
     </div>
