@@ -67,6 +67,17 @@ func (app *Config) getAccountById(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(user)
 }
 
+// getAllUsers
+func (app *Config) getAllUsers(w http.ResponseWriter, r *http.Request) {
+	users, err := data.GetAllUsers(app.DB.DB)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	app.writeJSON(w, http.StatusOK, users)
+}
+
 // getAccountByUsername handler
 func (app *Config) getAccountByUsername(w http.ResponseWriter, r *http.Request) {
 	username := chi.URLParam(r, "username")

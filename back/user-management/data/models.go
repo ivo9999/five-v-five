@@ -87,6 +87,31 @@ func GetUser(db *sql.DB, id int) (User, error) {
 	return user, err
 }
 
+func GetAllUsers(db *sql.DB) ([]User, error) {
+	ctx := context.Background()
+
+	query := `SELECT id, username, password, league_name, league_tag, discord_name 
+  FROM users`
+
+	var users []User
+	rows, err := db.QueryContext(ctx, query)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	for rows.Next() {
+		var user User
+		if err := rows.Scan(&user.ID, &user.Username, &user.Password, &user.LeagueName, &user.LeagueTag, &user.DiscordName); err != nil {
+			return nil, err
+		}
+		users = append(users, user)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return users, nil
+}
+
 func GetUserByUsername(db *sql.DB, username string) (User, error) {
 	ctx := context.Background()
 

@@ -26,6 +26,7 @@ func (app *Config) routes() http.Handler {
 	mux.Post("/createAccount", app.createAccount)
 	mux.Put("/updateAccount", app.updateAccount)
 	mux.Get("/getAccountById/{id}", app.getAccountById)
+	mux.Get("/getAllUsers", app.getAllUsers)
 	mux.Get("/getAccountByUsername/{username}", app.getAccountByUsername)
 	mux.Get("/fillUserDataRiot/{username}", app.fillUserDataRiot)
 

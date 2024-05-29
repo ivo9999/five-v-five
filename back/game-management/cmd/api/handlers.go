@@ -175,9 +175,16 @@ func (h *Handlers) ShuffleTeams(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
+	game, err = data.GetGame(h.DB.DB, gameID)
+	if err != nil {
+		h.Config.errorJSON(w, err, http.StatusInternalServerError)
+		return
+	}
+
 	h.Config.writeJSON(w, http.StatusOK, jsonResponse{
 		Error:   false,
 		Message: "Teams shuffled successfully",
+		Data:    game,
 	})
 }
 
