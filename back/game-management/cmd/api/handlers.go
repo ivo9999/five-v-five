@@ -145,6 +145,9 @@ func (h *Handlers) ShuffleTeams(w http.ResponseWriter, r *http.Request) {
 		Summoners: summonerNames,
 	}
 
+	fmt.Println(grpcRequest)
+	fmt.Println(summonerNames)
+
 	grpcResponse, err := h.RiotAPI.GetTeams(r.Context(), grpcRequest)
 	if err != nil {
 		h.Config.errorJSON(w, err, http.StatusInternalServerError)
@@ -155,6 +158,8 @@ func (h *Handlers) ShuffleTeams(w http.ResponseWriter, r *http.Request) {
 		h.Config.errorJSON(w, err, http.StatusInternalServerError)
 		return
 	}
+
+	fmt.Println(grpcResponse)
 
 	// Assign new teams
 	lanes := []string{"top", "jungle", "mid", "adc", "support"}
