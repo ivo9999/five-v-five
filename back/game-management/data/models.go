@@ -152,6 +152,19 @@ func InsertGame(db *sql.DB, game GameWithID) (int, error) {
 	return gameID, err
 }
 
+// UpdateTeam updates a team in the database
+func UpdateTeam(db *sql.DB, team Team, rating, mastery int) error {
+	ctx := context.Background()
+
+	query := `
+  UPDATE teams
+  SET name = $1, rating = $2, mastery_points = $3
+  WHERE id = $4;
+  `
+	_, err := db.ExecContext(ctx, query, team.Name, rating, mastery, team.ID)
+	return err
+}
+
 // GetGame retrieves a game by its ID from the database.
 func GetGame(db *sql.DB, gameID int) (*Game, error) {
 	ctx := context.Background()

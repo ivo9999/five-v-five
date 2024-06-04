@@ -4,6 +4,8 @@ package riot;
 
 option go_package = "/riot";
 
+import "google/protobuf/empty.proto";
+
 service RiotAPIService {
     rpc GetSummonerByName(SummonerByNameRequest) returns (SummonerResponse) {}
     rpc GetChampionMasteriesBySummoner(ChampionMasteriesRequest) returns (ChampionMasteriesResponse) {}
@@ -13,7 +15,9 @@ service RiotAPIService {
     rpc UpdateLeagueEntriesBySummoner(LeagueEntriesRequest) returns (LeagueEntriesResponse) {}
     rpc GetChampionBySummonerAndLane(ChampionBySummonerAndLaneRequest) returns (ChampionBySummonerAndLaneResponse) {}
     rpc GetChampionsByTeams(GetChampionsByTeamsRequest) returns (GetChampionsByTeamsResponse) {}
-    rpc GetTeams(GetTeamsRequest) returns (GetTeamsResponse) {} // New RPC
+    rpc GetTeams(GetTeamsRequest) returns (GetTeamsResponse) {} 
+    rpc SeedDB(google.protobuf.Empty) returns (google.protobuf.Empty) {}
+    rpc GetGameData(GetGameDataRequest) returns (getGameDataResponse) {}
 }
 
 message ChampionBySummonerAndLaneRequest {
@@ -25,28 +29,24 @@ message ChampionBySummonerAndLaneResponse {
     string champion = 1;
 }
 
-// Request message for getting a summoner by name.
 message SummonerByNameRequest {
     string name = 1;
-    string tag = 2; // Added field "tag" for the updated summoner identification requirements.
+    string tag = 2; 
 }
 
-// Response message containing detailed summoner info.
 message SummonerResponse {
     string id = 1;
     string accountId = 2;
     string puuid = 3;
     string name = 4;
-    string tag = 5; // Added field "tag" to be consistent with request.
+    string tag = 5; 
     int32 summonerLevel = 6;
 }
 
-// Request message for getting champion masteries by summoner ID.
 message ChampionMasteriesRequest {
     string summonerId = 1;
 }
 
-// Response message containing a list of champion masteries.
 message ChampionMasteriesResponse {
     repeated ChampionMastery masteries = 1;
 }
@@ -63,12 +63,10 @@ message ChampionMastery {
     bool chestGranted = 9;
 }
 
-// Request message for getting league entries by summoner ID.
 message LeagueEntriesRequest {
     string summonerId = 1;
 }
 
-// Response message containing a list of league entries.
 message LeagueEntriesResponse {
     repeated LeagueEntry entries = 1;
 }
@@ -109,7 +107,6 @@ message GetChampionsByTeamsResponse {
     repeated SummonerChampion team2Champions = 2;
 }
 
-// New messages for GetTeams
 message GetTeamsRequest {
     repeated string summoners = 1;
 }
@@ -118,4 +115,29 @@ message GetTeamsResponse {
     repeated string team1 = 1;
     repeated string team2 = 2;
 }
+
+message ChampionSummoner {
+    string summonerName = 1;
+    string championName = 2;
+}
+
+message TeamDataRequest {
+  repeated ChampionSummoner summoners = 1;
+}
+
+message TeamDataResponse {
+  int32 Rating = 1;
+  int32 MasteryScore = 2;
+  }
+
+message GetGameDataRequest {
+    TeamDataRequest team1 = 1;
+    TeamDataRequest team2 = 2;
+}
+
+message getGameDataResponse {
+    TeamDataResponse team1 = 1;
+    TeamDataResponse team2 = 2;
+}
+
 

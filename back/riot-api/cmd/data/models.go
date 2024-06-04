@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"errors"
+	"fmt"
 	"log"
 	"math/rand"
 	"time"
@@ -81,15 +82,15 @@ type SummonerChampion struct {
 
 func GetRankPoints(tier string, rank string) int {
 	tierPoints := map[string]int{
-		"iron":        0,
-		"bronze":      10,
-		"silver":      20,
-		"gold":        30,
-		"platinum":    40,
-		"diamond":     50,
-		"master":      60,
-		"grandmaster": 70,
-		"challenger":  80,
+		"IRON":        0,
+		"BRONZE":      10,
+		"SILVER":      20,
+		"GOLD":        30,
+		"PLATINUM":    40,
+		"DIAMOND":     50,
+		"MASTER":      60,
+		"GRANDMASTER": 70,
+		"CHALLENGER":  80,
 	}
 
 	rankPoints := map[string]int{
@@ -521,7 +522,6 @@ func GetBalancedChampionsForLanes(db *sql.DB, team1 []SummonerLane, team2 []Summ
 			return nil, nil, err
 		}
 
-		// Try to balance the teams by champion points
 		balanced := balanceTeams(team1Champions, team2Champions)
 		if balanced {
 			return team1Champions, team2Champions, nil
@@ -561,17 +561,78 @@ func totalChampionPoints(team []SummonerChampion) int {
 	return totalPoints
 }
 
+func GetChampionPointsByUser(ctx context.Context, db *sql.DB, summonerName, championName string) (int, error) {
+	var puuid string
+	var points int
+	var championID int
+
+	err := db.QueryRowContext(ctx, "SELECT puuid FROM summoners WHERE name = $1", summonerName).Scan(&puuid)
+	if err != nil {
+		return 0, err
+	}
+
+	fmt.Println(puuid)
+
+	err = db.QueryRowContext(ctx, "SELECT champion_id FROM champions WHERE name = $1", championName).Scan(&championID)
+	if err != nil {
+		return 0, err
+	}
+
+	fmt.Println(championID)
+
+	query := `
+    SELECT champion_points
+    FROM champion_masteries
+    WHERE puuid = $1 AND champion_id = $2
+    `
+	err = db.QueryRowContext(ctx, query, puuid, championID).Scan(&points)
+	fmt.Println(points)
+	if err != nil {
+		return 0, err
+	}
+	return points, nil
+}
+
+func GetEloByUser(ctx context.Context, db *sql.DB, summonerName string) (int, error) {
+	var elo int
+
+	summoner, err := GetSummoner(db, ctx, summonerName)
+	if err != nil {
+		return 0, err
+	}
+	if summoner == nil {
+		return 0, fmt.Errorf("summoner %s not found", summonerName)
+	}
+
+	entries, err := GetLeagueEntries(db, ctx, summoner.ID)
+	if err != nil {
+		return 0, err
+	}
+
+	if len(entries) == 0 {
+		return 0, fmt.Errorf("no league entries found for summoner %s", summonerName)
+	}
+
+	highestRank := entries[0]
+	for _, entry := range entries {
+		if GetRankPoints(entry.Tier, entry.Rank) > GetRankPoints(highestRank.Tier, highestRank.Rank) {
+			highestRank = entry
+		}
+	}
+
+	elo = GetRankPoints(highestRank.Tier, highestRank.Rank)
+	return elo, nil
+}
+
 func getRandomChampionForSummonerLane(ctx context.Context, db *sql.DB, summonerName string, lane string) (SummonerChampion, error) {
 	var sc SummonerChampion
 
-	// Get the summoner's PUUID based on their name
 	var puuid string
 	err := db.QueryRowContext(ctx, "SELECT puuid FROM summoners WHERE name = $1", summonerName).Scan(&puuid)
 	if err != nil {
 		return sc, err
 	}
 
-	// Get the list of champions for the given lane that the summoner has champion points on
 	query := `
     SELECT c.name, cm.champion_points
     FROM champion_masteries cm
@@ -599,12 +660,10 @@ func getRandomChampionForSummonerLane(ctx context.Context, db *sql.DB, summonerN
 		return sc, err
 	}
 
-	// If no champions are found, return an empty result
 	if len(champions) == 0 {
 		return sc, errors.New("no champions found for the summoner and lane")
 	}
 
-	// Select a random champion from the list
 	randomChampion := champions[rand.Intn(len(champions))]
 
 	return randomChampion, nil

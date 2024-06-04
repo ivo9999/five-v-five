@@ -11,6 +11,7 @@ import (
 	grpc "google.golang.org/grpc"
 	codes "google.golang.org/grpc/codes"
 	status "google.golang.org/grpc/status"
+	emptypb "google.golang.org/protobuf/types/known/emptypb"
 )
 
 // This is a compile-time assertion to ensure that this generated file
@@ -28,6 +29,8 @@ const (
 	RiotAPIService_GetChampionBySummonerAndLane_FullMethodName      = "/riot.RiotAPIService/GetChampionBySummonerAndLane"
 	RiotAPIService_GetChampionsByTeams_FullMethodName               = "/riot.RiotAPIService/GetChampionsByTeams"
 	RiotAPIService_GetTeams_FullMethodName                          = "/riot.RiotAPIService/GetTeams"
+	RiotAPIService_SeedDB_FullMethodName                            = "/riot.RiotAPIService/SeedDB"
+	RiotAPIService_GetGameData_FullMethodName                       = "/riot.RiotAPIService/GetGameData"
 )
 
 // RiotAPIServiceClient is the client API for RiotAPIService service.
@@ -43,6 +46,8 @@ type RiotAPIServiceClient interface {
 	GetChampionBySummonerAndLane(ctx context.Context, in *ChampionBySummonerAndLaneRequest, opts ...grpc.CallOption) (*ChampionBySummonerAndLaneResponse, error)
 	GetChampionsByTeams(ctx context.Context, in *GetChampionsByTeamsRequest, opts ...grpc.CallOption) (*GetChampionsByTeamsResponse, error)
 	GetTeams(ctx context.Context, in *GetTeamsRequest, opts ...grpc.CallOption) (*GetTeamsResponse, error)
+	SeedDB(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (*emptypb.Empty, error)
+	GetGameData(ctx context.Context, in *GetGameDataRequest, opts ...grpc.CallOption) (*GetGameDataResponse, error)
 }
 
 type riotAPIServiceClient struct {
@@ -134,6 +139,24 @@ func (c *riotAPIServiceClient) GetTeams(ctx context.Context, in *GetTeamsRequest
 	return out, nil
 }
 
+func (c *riotAPIServiceClient) SeedDB(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (*emptypb.Empty, error) {
+	out := new(emptypb.Empty)
+	err := c.cc.Invoke(ctx, RiotAPIService_SeedDB_FullMethodName, in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *riotAPIServiceClient) GetGameData(ctx context.Context, in *GetGameDataRequest, opts ...grpc.CallOption) (*GetGameDataResponse, error) {
+	out := new(GetGameDataResponse)
+	err := c.cc.Invoke(ctx, RiotAPIService_GetGameData_FullMethodName, in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // RiotAPIServiceServer is the server API for RiotAPIService service.
 // All implementations must embed UnimplementedRiotAPIServiceServer
 // for forward compatibility
@@ -147,6 +170,8 @@ type RiotAPIServiceServer interface {
 	GetChampionBySummonerAndLane(context.Context, *ChampionBySummonerAndLaneRequest) (*ChampionBySummonerAndLaneResponse, error)
 	GetChampionsByTeams(context.Context, *GetChampionsByTeamsRequest) (*GetChampionsByTeamsResponse, error)
 	GetTeams(context.Context, *GetTeamsRequest) (*GetTeamsResponse, error)
+	SeedDB(context.Context, *emptypb.Empty) (*emptypb.Empty, error)
+	GetGameData(context.Context, *GetGameDataRequest) (*GetGameDataResponse, error)
 	mustEmbedUnimplementedRiotAPIServiceServer()
 }
 
@@ -180,6 +205,12 @@ func (UnimplementedRiotAPIServiceServer) GetChampionsByTeams(context.Context, *G
 }
 func (UnimplementedRiotAPIServiceServer) GetTeams(context.Context, *GetTeamsRequest) (*GetTeamsResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetTeams not implemented")
+}
+func (UnimplementedRiotAPIServiceServer) SeedDB(context.Context, *emptypb.Empty) (*emptypb.Empty, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method SeedDB not implemented")
+}
+func (UnimplementedRiotAPIServiceServer) GetGameData(context.Context, *GetGameDataRequest) (*GetGameDataResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method GetGameData not implemented")
 }
 func (UnimplementedRiotAPIServiceServer) mustEmbedUnimplementedRiotAPIServiceServer() {}
 
@@ -356,6 +387,42 @@ func _RiotAPIService_GetTeams_Handler(srv interface{}, ctx context.Context, dec 
 	return interceptor(ctx, in, info, handler)
 }
 
+func _RiotAPIService_SeedDB_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(emptypb.Empty)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(RiotAPIServiceServer).SeedDB(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: RiotAPIService_SeedDB_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(RiotAPIServiceServer).SeedDB(ctx, req.(*emptypb.Empty))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _RiotAPIService_GetGameData_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetGameDataRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(RiotAPIServiceServer).GetGameData(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: RiotAPIService_GetGameData_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(RiotAPIServiceServer).GetGameData(ctx, req.(*GetGameDataRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // RiotAPIService_ServiceDesc is the grpc.ServiceDesc for RiotAPIService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -398,6 +465,14 @@ var RiotAPIService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "GetTeams",
 			Handler:    _RiotAPIService_GetTeams_Handler,
+		},
+		{
+			MethodName: "SeedDB",
+			Handler:    _RiotAPIService_SeedDB_Handler,
+		},
+		{
+			MethodName: "GetGameData",
+			Handler:    _RiotAPIService_GetGameData_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

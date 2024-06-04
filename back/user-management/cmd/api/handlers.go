@@ -1,7 +1,9 @@
 package main
 
 import (
+	"context"
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"strconv"
 	"user-management-micro/data"
@@ -21,6 +23,14 @@ func (app *Config) createAccount(w http.ResponseWriter, r *http.Request) {
 
 	id, err := data.InsertUser(app.DB.DB, user)
 	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	fmt.Println(user.LeagueName)
+	err = updateUser(user.LeagueName, app)
+	if err != nil {
+		fmt.Println("Error updating user")
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
@@ -94,11 +104,24 @@ func (app *Config) getAccountByUsername(w http.ResponseWriter, r *http.Request) 
 func (app *Config) fillUserDataRiot(w http.ResponseWriter, r *http.Request) {
 	username := chi.URLParam(r, "username")
 
-	user, err := data.GetUserByUsername(app.DB.DB, username)
+	err := updateUser(username, app)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
+
+	// If everything is successful
+	w.WriteHeader(http.StatusOK)
+	json.NewEncoder(w).Encode(map[string]bool{"success": true})
+}
+
+func updateUser(username string, app *Config) error {
+	user, err := data.GetUserByUsername(app.DB.DB, username)
+	if err != nil {
+		return err
+	}
+
+	fmt.Println(user)
 
 	updateSumoner := &riot.SummonerByNameRequest{
 		Name: user.LeagueName,
@@ -114,24 +137,19 @@ func (app *Config) fillUserDataRiot(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Update summoner by name
-	if _, err := app.RiotAPI.UpdateSummonerByName(r.Context(), updateSumoner); err != nil {
-		http.Error(w, "Failed to update summoner by name", http.StatusInternalServerError)
-		return
+	if _, err := app.RiotAPI.UpdateSummonerByName(context.Background(), updateSumoner); err != nil {
+		return err
 	}
 
 	// Update champion masteries by summoner
-	if _, err := app.RiotAPI.UpdateChampionMasteriesBySummoner(r.Context(), updateChampion); err != nil {
-		http.Error(w, "Failed to update champion masteries by summoner", http.StatusInternalServerError)
-		return
+	if _, err := app.RiotAPI.UpdateChampionMasteriesBySummoner(context.Background(), updateChampion); err != nil {
+		return err
 	}
 
 	// Update league entries by summoner
-	if _, err := app.RiotAPI.UpdateLeagueEntriesBySummoner(r.Context(), updateLeagues); err != nil {
-		http.Error(w, "Failed to update league entries by summoner", http.StatusInternalServerError)
-		return
+	if _, err := app.RiotAPI.UpdateLeagueEntriesBySummoner(context.Background(), updateLeagues); err != nil {
+		return err
 	}
 
-	// If everything is successful
-	w.WriteHeader(http.StatusOK)
-	json.NewEncoder(w).Encode(map[string]bool{"success": true})
+	return nil
 }

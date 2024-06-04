@@ -332,7 +332,6 @@ func (s *RiotAPIServer) GetTeams(ctx context.Context, req *riot.GetTeamsRequest)
 		fmt.Println(name)
 		summoners = append(summoners, name)
 	}
-	fmt.Println(summoners)
 
 	summonerRanks := make(map[string]int)
 	for _, summonerName := range summoners {
@@ -405,6 +404,54 @@ func (s *RiotAPIServer) GetTeams(ctx context.Context, req *riot.GetTeamsRequest)
 	resp := &riot.GetTeamsResponse{
 		Team1: bestTeam1,
 		Team2: bestTeam2,
+	}
+
+	return resp, nil
+}
+
+func (s *RiotAPIServer) GetGameData(ctx context.Context, req *riot.GetGameDataRequest) (*riot.GetGameDataResponse, error) {
+	var team1Masteries, team2Masteries, team1Elo, team2Elo int
+
+	for _, summoner := range req.Team1.Summoners {
+		if summoner.ChampionName != "" {
+			m, err := data.GetChampionPointsByUser(ctx, s.db, summoner.SummonerName, summoner.ChampionName)
+			team1Masteries += m
+			if err != nil {
+				return nil, err
+			}
+		}
+
+		e, err := data.GetEloByUser(ctx, s.db, summoner.SummonerName)
+		team1Elo += e
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	for _, summoner := range req.Team2.Summoners {
+		if summoner.ChampionName != "" {
+			m, err := data.GetChampionPointsByUser(ctx, s.db, summoner.SummonerName, summoner.ChampionName)
+			team2Masteries += m
+			if err != nil {
+				return nil, err
+			}
+		}
+		e, err := data.GetEloByUser(ctx, s.db, summoner.SummonerName)
+		team2Elo += e
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	resp := &riot.GetGameDataResponse{
+		Team1: &riot.TeamDataResponse{
+			MasteryScore: int32(team1Masteries),
+			Rating:       int32(team1Elo),
+		},
+		Team2: &riot.TeamDataResponse{
+			MasteryScore: int32(team2Masteries),
+			Rating:       int32(team2Elo),
+		},
 	}
 
 	return resp, nil

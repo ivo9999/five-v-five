@@ -50,8 +50,37 @@ func (h *Handlers) InitializeGame(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	teamBlue := data.Team{Name: request.TeamBlue, Rating: 0, MasteryPoints: 0}
-	teamRed := data.Team{Name: request.TeamRed, Rating: 0, MasteryPoints: 0}
+	var team1Summoners []*proto.ChampionSummoner
+	for _, summoner := range grpcResponse.Team1 {
+		team1Summoners = append(team1Summoners, &proto.ChampionSummoner{SummonerName: summoner, ChampionName: ""})
+	}
+
+	team1Req := &proto.TeamDataRequest{
+		Summoners: team1Summoners,
+	}
+
+	var team2Summoners []*proto.ChampionSummoner
+	for _, summoner := range grpcResponse.Team2 {
+		team2Summoners = append(team2Summoners, &proto.ChampionSummoner{SummonerName: summoner, ChampionName: ""})
+	}
+
+	team2Req := &proto.TeamDataRequest{
+		Summoners: team2Summoners,
+	}
+
+	grpcRequestData := &proto.GetGameDataRequest{
+		Team1: team1Req,
+		Team2: team2Req,
+	}
+
+	grpcResponseData, err := h.RiotAPI.GetGameData(r.Context(), grpcRequestData)
+	if err != nil {
+		h.Config.errorJSON(w, err, http.StatusInternalServerError)
+		return
+	}
+
+	teamBlue := data.Team{Name: request.TeamBlue, Rating: int(grpcResponseData.Team1.Rating), MasteryPoints: int(grpcResponseData.Team1.MasteryScore)}
+	teamRed := data.Team{Name: request.TeamRed, Rating: int(grpcResponseData.Team2.Rating), MasteryPoints: int(grpcResponseData.Team2.MasteryScore)}
 
 	teamBlueID, err := data.InsertTeam(h.DB.DB, teamBlue)
 	if err != nil {
@@ -145,9 +174,6 @@ func (h *Handlers) ShuffleTeams(w http.ResponseWriter, r *http.Request) {
 		Summoners: summonerNames,
 	}
 
-	fmt.Println(grpcRequest)
-	fmt.Println(summonerNames)
-
 	grpcResponse, err := h.RiotAPI.GetTeams(r.Context(), grpcRequest)
 	if err != nil {
 		h.Config.errorJSON(w, err, http.StatusInternalServerError)
@@ -178,6 +204,46 @@ func (h *Handlers) ShuffleTeams(w http.ResponseWriter, r *http.Request) {
 			h.Config.errorJSON(w, err, http.StatusInternalServerError)
 			return
 		}
+	}
+
+	var team1Summoners []*proto.ChampionSummoner
+	for _, summoner := range grpcResponse.Team1 {
+		team1Summoners = append(team1Summoners, &proto.ChampionSummoner{SummonerName: summoner, ChampionName: ""})
+	}
+
+	team1Req := &proto.TeamDataRequest{
+		Summoners: team1Summoners,
+	}
+
+	var team2Summoners []*proto.ChampionSummoner
+	for _, summoner := range grpcResponse.Team2 {
+		team2Summoners = append(team2Summoners, &proto.ChampionSummoner{SummonerName: summoner, ChampionName: ""})
+	}
+
+	team2Req := &proto.TeamDataRequest{
+		Summoners: team2Summoners,
+	}
+
+	grpcRequestData := &proto.GetGameDataRequest{
+		Team1: team1Req,
+		Team2: team2Req,
+	}
+
+	grpcResponseData, err := h.RiotAPI.GetGameData(r.Context(), grpcRequestData)
+	if err != nil {
+		h.Config.errorJSON(w, err, http.StatusInternalServerError)
+		return
+	}
+
+	err = data.UpdateTeam(h.DB.DB, game.TeamBlue, int(grpcResponseData.Team1.Rating), int(grpcResponseData.Team1.MasteryScore))
+	if err != nil {
+		h.Config.errorJSON(w, err, http.StatusInternalServerError)
+		return
+	}
+	err = data.UpdateTeam(h.DB.DB, game.TeamRed, int(grpcResponseData.Team2.Rating), int(grpcResponseData.Team2.MasteryScore))
+	if err != nil {
+		h.Config.errorJSON(w, err, http.StatusInternalServerError)
+		return
 	}
 
 	game, err = data.GetGame(h.DB.DB, gameID)
@@ -305,6 +371,46 @@ func (h *Handlers) GetChampions(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	var team1Summoners []*proto.ChampionSummoner
+	for _, summoner := range grpcResponse.Team1Champions {
+		team1Summoners = append(team1Summoners, &proto.ChampionSummoner{SummonerName: summoner.SummonerName, ChampionName: summoner.ChampionName})
+	}
+
+	team1Req := &proto.TeamDataRequest{
+		Summoners: team1Summoners,
+	}
+
+	var team2Summoners []*proto.ChampionSummoner
+	for _, summoner := range grpcResponse.Team2Champions {
+		team2Summoners = append(team2Summoners, &proto.ChampionSummoner{SummonerName: summoner.SummonerName, ChampionName: summoner.ChampionName})
+	}
+
+	team2Req := &proto.TeamDataRequest{
+		Summoners: team2Summoners,
+	}
+
+	grpcRequestData := &proto.GetGameDataRequest{
+		Team1: team1Req,
+		Team2: team2Req,
+	}
+
+	grpcResponseData, err := h.RiotAPI.GetGameData(r.Context(), grpcRequestData)
+	if err != nil {
+		h.Config.errorJSON(w, err, http.StatusInternalServerError)
+		return
+	}
+
+	err = data.UpdateTeam(h.DB.DB, game.TeamBlue, int(grpcResponseData.Team1.Rating), int(grpcResponseData.Team1.MasteryScore))
+	if err != nil {
+		h.Config.errorJSON(w, err, http.StatusInternalServerError)
+		return
+	}
+	err = data.UpdateTeam(h.DB.DB, game.TeamRed, int(grpcResponseData.Team2.Rating), int(grpcResponseData.Team2.MasteryScore))
+	if err != nil {
+		h.Config.errorJSON(w, err, http.StatusInternalServerError)
+		return
+	}
+
 	game, _ = data.GetGame(h.DB.DB, gameID)
 
 	h.Config.writeJSON(w, http.StatusOK, jsonResponse{
@@ -358,6 +464,52 @@ func (h *Handlers) GetNewChampion(w http.ResponseWriter, r *http.Request) {
 	}
 
 	game, err := data.GetGame(h.DB.DB, gameID)
+	if err != nil {
+		h.Config.errorJSON(w, err, http.StatusInternalServerError)
+		return
+	}
+
+	var team1Summoners []*proto.ChampionSummoner
+	for _, summoner := range game.TeamBlue.Summoners {
+		team1Summoners = append(team1Summoners, &proto.ChampionSummoner{SummonerName: summoner.Name, ChampionName: summoner.Champion})
+	}
+
+	team1Req := &proto.TeamDataRequest{
+		Summoners: team1Summoners,
+	}
+
+	var team2Summoners []*proto.ChampionSummoner
+	for _, summoner := range game.TeamRed.Summoners {
+		team2Summoners = append(team2Summoners, &proto.ChampionSummoner{SummonerName: summoner.Name, ChampionName: summoner.Champion})
+	}
+
+	team2Req := &proto.TeamDataRequest{
+		Summoners: team2Summoners,
+	}
+
+	grpcRequestData := &proto.GetGameDataRequest{
+		Team1: team1Req,
+		Team2: team2Req,
+	}
+
+	grpcResponseData, err := h.RiotAPI.GetGameData(r.Context(), grpcRequestData)
+	if err != nil {
+		h.Config.errorJSON(w, err, http.StatusInternalServerError)
+		return
+	}
+
+	err = data.UpdateTeam(h.DB.DB, game.TeamBlue, int(grpcResponseData.Team1.Rating), int(grpcResponseData.Team1.MasteryScore))
+	if err != nil {
+		h.Config.errorJSON(w, err, http.StatusInternalServerError)
+		return
+	}
+	err = data.UpdateTeam(h.DB.DB, game.TeamRed, int(grpcResponseData.Team2.Rating), int(grpcResponseData.Team2.MasteryScore))
+	if err != nil {
+		h.Config.errorJSON(w, err, http.StatusInternalServerError)
+		return
+	}
+
+	game, err = data.GetGame(h.DB.DB, gameID)
 	if err != nil {
 		h.Config.errorJSON(w, err, http.StatusInternalServerError)
 		return
