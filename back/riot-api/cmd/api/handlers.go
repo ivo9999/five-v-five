@@ -345,11 +345,13 @@ func (s *RiotAPIServer) GetTeams(ctx context.Context, req *riot.GetTeamsRequest)
 
 		entries, err := data.GetLeagueEntries(s.db, ctx, summoner.ID)
 		if err != nil {
-			return nil, err
+			summonerRanks[summonerName] = 0
+			continue
 		}
 
 		if len(entries) == 0 {
-			return nil, fmt.Errorf("no league entries found for summoner %s", summonerName)
+			summonerRanks[summonerName] = 0
+			continue
 		}
 
 		highestRank := entries[0]

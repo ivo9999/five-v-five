@@ -27,8 +27,7 @@ func (app *Config) createAccount(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	fmt.Println(user.LeagueName)
-	err = updateUser(user.LeagueName, app)
+	err = UpdateUserRiot(user.LeagueName, user.LeagueTag, app)
 	if err != nil {
 		fmt.Println("Error updating user")
 		http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -123,17 +122,26 @@ func updateUser(username string, app *Config) error {
 
 	fmt.Println(user)
 
+	err = UpdateUserRiot(user.LeagueName, user.LeagueTag, app)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func UpdateUserRiot(leagueName string, leagueTag string, app *Config) error {
 	updateSumoner := &riot.SummonerByNameRequest{
-		Name: user.LeagueName,
-		Tag:  user.LeagueTag,
+		Name: leagueName,
+		Tag:  leagueTag,
 	}
 
 	updateChampion := &riot.ChampionMasteriesRequest{
-		SummonerId: user.LeagueName,
+		SummonerId: leagueName,
 	}
 
 	updateLeagues := &riot.LeagueEntriesRequest{
-		SummonerId: user.LeagueName,
+		SummonerId: leagueName,
 	}
 
 	// Update summoner by name

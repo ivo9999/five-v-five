@@ -265,11 +265,11 @@ func SwapSummoners(db *sql.DB, gameID int, summoner1Name string, summoner2Name s
 	}
 
 	// Swap the teams
-	_, err = db.ExecContext(ctx, "UPDATE summoners SET team_id = $1 WHERE name = $2", teamID2, summoner1Name)
+	_, err = db.ExecContext(ctx, "UPDATE summoners SET name = $1 WHERE name = $2 AND team_id = $3", summoner1Name, summoner2Name, teamID2)
 	if err != nil {
 		return err
 	}
-	_, err = db.ExecContext(ctx, "UPDATE summoners SET team_id = $1 WHERE name = $2", teamID1, summoner2Name)
+	_, err = db.ExecContext(ctx, "UPDATE summoners SET name = $1 WHERE name = $2 AND team_id = $3", summoner2Name, summoner1Name, teamID1)
 	return err
 }
 

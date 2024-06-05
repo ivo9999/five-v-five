@@ -610,7 +610,7 @@ func GetEloByUser(ctx context.Context, db *sql.DB, summonerName string) (int, er
 	}
 
 	if len(entries) == 0 {
-		return 0, fmt.Errorf("no league entries found for summoner %s", summonerName)
+		return 0, nil
 	}
 
 	highestRank := entries[0]

@@ -30,9 +30,9 @@ func NewHandlers(db *data.DB, riotAPI proto.RiotAPIServiceClient, config *Config
 // Create a new game with balanced teams from a list of summoners
 func (h *Handlers) InitializeGame(w http.ResponseWriter, r *http.Request) {
 	var request struct {
-		Summoners []string `json:"summoners"`
 		TeamRed   string   `json:"team_red"`
 		TeamBlue  string   `json:"team_blue"`
+		Summoners []string `json:"summoners"`
 	}
 
 	if err := h.Config.readJSON(w, r, &request); err != nil {
