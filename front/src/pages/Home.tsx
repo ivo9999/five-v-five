@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom';
 
 const HomePage: React.FC = () => {
   return (
-    <div className="min-h-screen flex flex-col items-center justify-center bg-black text-white p-4">
+    <div className=" flex flex-col items-center justify-center bg-black text-white p-4">
       <h1 className="text-4xl font-bold text-center mb-6 tracking-wider">fivevfive</h1>
       <p className="text-lg text-center mb-6 max-w-md">
         fivevfive offers an easy and convenient way for you and your friends to create and manage custom games.

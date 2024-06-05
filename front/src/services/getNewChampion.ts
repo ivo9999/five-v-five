@@ -3,16 +3,23 @@ import { Game } from "@/common/types";
 
 interface GetGameParams {
   gameid: string;
+  username: string;
   signal?: AbortSignal;
 }
 
-export const getChampions = async ({ gameid }: GetGameParams): Promise<Game> => {
+export const getNewChampion = async ({ gameid, username }: GetGameParams): Promise<Game> => {
   try {
-    const resp = await fetch(gamebackendurl + 'games/' + gameid + "/champions", {
+
+    console.log(gameid, username)
+
+    const body = JSON.stringify({ summoner_name: username })
+
+    const resp = await fetch(gamebackendurl + 'games/' + gameid + "/newChamp", {
       headers: {
         'Content-Type': 'application/json',
       },
-      method: 'GET',
+      method: 'POST',
+      body: body
     })
 
 

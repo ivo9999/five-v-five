@@ -5,7 +5,7 @@ interface TeamTableProps {
 }
 const RolesSplitter: React.FC<TeamTableProps> = ({ team }) => {
   return (
-    <div className="bg-black text-white  rounded-lg shadow-md">
+    <div className="bg-black text-white justify-self-center rounded-lg shadow-md">
       <h2 className="text-2xl font-bold text-black mb-4">text</h2>
       <table className="table-auto w-full">
         <thead>

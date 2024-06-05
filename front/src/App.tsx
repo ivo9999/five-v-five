@@ -7,6 +7,7 @@ import CreateGame, { loader as CreateGameLoader } from './pages/CreateGame';
 import Header from './components/Header';
 import Game from './pages/Game';
 import { queryClient } from './utils/http';
+import { loader as GameLoader } from './utils/loaders/loadGame';
 
 
 function App() {
@@ -30,7 +31,7 @@ function App() {
             <Route path="login" element={<LoginPage />} />
             <Route path="signup" element={<SignupPage />} />
             <Route path="games" element={<CreateGame />} loader={CreateGameLoader} />
-            <Route path="games/:id" element={<Game />} />
+            <Route path="games/:id" element={<Game />} loader={GameLoader} />
           </Route>
         </Routes>
       </BrowserRouter>
