@@ -333,6 +333,11 @@ func (s *RiotAPIServer) GetTeams(ctx context.Context, req *riot.GetTeamsRequest)
 		summoners = append(summoners, name)
 	}
 
+	// Ensure there is an even number of summoners to split into two teams
+	if len(summoners)%2 != 0 {
+		return nil, fmt.Errorf("uneven number of summoners: %d, cannot split into two equal teams", len(summoners))
+	}
+
 	summonerRanks := make(map[string]int)
 	for _, summonerName := range summoners {
 		summoner, err := data.GetSummoner(s.db, ctx, summonerName)
@@ -376,9 +381,10 @@ func (s *RiotAPIServer) GetTeams(ctx context.Context, req *riot.GetTeamsRequest)
 
 		team1, team2 := []string{}, []string{}
 		team1Points, team2Points := 0, 0
+		half := len(summoners) / 2
 
-		for _, summonerName := range summoners {
-			if team1Points <= team2Points {
+		for j, summonerName := range summoners {
+			if j < half {
 				team1 = append(team1, summonerName)
 				team1Points += summonerRanks[summonerName]
 			} else {
