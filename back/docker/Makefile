@@ -1,4 +1,4 @@
-SHELL=cmd.exe
+SHELL=/bin/bash
 RIOT_BINARY=riotApp
 USER_BINARY=userApp
 GAME_BINARY=gameApp
@@ -18,13 +18,13 @@ down:
 	@echo Docker containers are down
 
 build_game:
-	chdir ..\game-management && set GOOS=linux&& set GOARCH=amd64&& set CGO_ENABLED=0 && go build -o ${GAME_BINARY} ./cmd/api
+	cd ../game-management && GOOS=linux GOARCH=amd64 CGO_ENABLED=0 go build -o ${GAME_BINARY} ./cmd/api
 	@echo Game binary built
 
 build_riot:
-	chdir ..\riot-api && set GOOS=linux&& set GOARCH=amd64&& set CGO_ENABLED=0 && go build -o ${RIOT_BINARY} ./cmd/api
+	cd ../riot-api && GOOS=linux GOARCH=amd64 CGO_ENABLED=0 go build -o ${RIOT_BINARY} ./cmd/api
 	@echo Riot binary built
 
 build_user:
-	chdir ..\user-management && set GOOS=linux&& set GOARCH=amd64&& set CGO_ENABLED=0 && go build -o ${USER_BINARY} ./cmd/api
+	cd ../user-management && GOOS=linux GOARCH=amd64 CGO_ENABLED=0 go build -o ${USER_BINARY} ./cmd/api
 	@echo User binary built
