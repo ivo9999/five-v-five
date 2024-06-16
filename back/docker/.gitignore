@@ -1,1 +1,4 @@
 .env
+game-data/
+riot-data/
+user-data/
