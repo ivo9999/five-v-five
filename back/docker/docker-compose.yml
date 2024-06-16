@@ -54,6 +54,8 @@ services:
     environment:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: admin
+    volumes:
+      - ./user-data:/var/lib/postgresql/data
 
   game-postgres:
     image: 'postgres:14.2'
@@ -66,6 +68,8 @@ services:
     environment:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: admin
+    volumes:
+      - ./game-data:/var/lib/postgresql/data
 
   riot-postgres:
     image: 'postgres:14.2'
@@ -78,8 +82,17 @@ services:
     environment:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: admin
+    volumes:
+      - ./riot-data:/var/lib/postgresql/data
 
 networks:
   default:
     driver: bridge
 
+volumes:
+  game-data:  
+    driver: local
+  user-data:  
+    driver: local
+  riot-data:  
+    driver: local
