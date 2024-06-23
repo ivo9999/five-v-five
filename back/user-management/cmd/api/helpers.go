@@ -5,7 +5,14 @@ import (
 	"errors"
 	"io"
 	"net/http"
+
+	"golang.org/x/crypto/bcrypt"
 )
+
+type LoginRequest struct {
+	Username string `json:"username"`
+	Password string `json:"password"`
+}
 
 type jsonResponse struct {
 	Error   bool   `json:"error"`
@@ -70,4 +77,16 @@ func (app *Config) errorJSON(w http.ResponseWriter, err error, status ...int) er
 	payload.Message = err.Error()
 
 	return app.writeJSON(w, statusCode, payload)
+}
+
+func ValidPassword(pw, userpw string) bool {
+	return bcrypt.CompareHashAndPassword([]byte(userpw), []byte(pw)) == nil
+}
+
+func encryptPassword(pw string) (string, error) {
+	encpw, err := bcrypt.GenerateFromPassword([]byte(pw), bcrypt.DefaultCost)
+	if err != nil {
+		return "", err
+	}
+	return string(encpw), nil
 }

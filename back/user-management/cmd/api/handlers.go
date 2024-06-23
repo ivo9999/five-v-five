@@ -39,6 +39,40 @@ func (app *Config) createAccount(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(user)
 }
 
+func (app *Config) loginUser(w http.ResponseWriter, r *http.Request) {
+	var req LoginRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	acc, err := data.GetUserByUsernameLogin(app.DB.DB, req.Username)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	if !ValidPassword(req.Password, acc.Password) {
+		http.Error(w, "Invalid username or password", http.StatusUnauthorized)
+		return
+	}
+
+	token, err := data.CreateJWT(&acc)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	res := data.LoginResponse{
+		Username: acc.Username,
+		ID:       acc.ID,
+		Token:    token,
+	}
+
+	w.WriteHeader(http.StatusOK)
+	json.NewEncoder(w).Encode(res)
+}
+
 // updateAccount handler
 func (app *Config) updateAccount(w http.ResponseWriter, r *http.Request) {
 	var user data.User
