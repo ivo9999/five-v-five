@@ -1,15 +1,17 @@
+import { ReactNode } from "react";
+
 export type Player = {
-  summonerName: string
-  division: string
-}
+  summonerName: string;
+  division: string;
+};
 
 export type User = {
-  username: string,
-  league_name: string,
-  league_tag: string,
-  discord_name: string,
-  Id: number
-}
+  username: string;
+  league_name: string;
+  league_tag: string;
+  discord_name: string;
+  Id: number;
+};
 
 export interface Summoner {
   name: string;
@@ -34,3 +36,19 @@ export interface Game {
   team_red: Team;
   id: number;
 }
+
+export type UserData = {
+  username: string;
+  id: number;
+};
+
+export type AuthContextType = {
+  currentUser: User | null;
+  isLoading: boolean;
+  logOutUser: () => void;
+  setCurrentUser: (user: User) => void;
+};
+
+export type AuthProviderProps = {
+  children: ReactNode;
+};
