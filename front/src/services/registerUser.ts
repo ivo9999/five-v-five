@@ -1,8 +1,10 @@
+import { userbackendurl } from "@/common/constants";
+
 export default async function registerUser(
   username: string,
   password: string,
   leagueName: string,
-  leagueTag: boolean,
+  leagueTag: string,
   discordName: string,
 ) {
   const body = {
@@ -14,7 +16,7 @@ export default async function registerUser(
   };
 
   try {
-    const res = await fetch("url", {
+    const res = await fetch(userbackendurl + "createAccount", {
       headers: {
         "Content-Type": "application/json",
       },

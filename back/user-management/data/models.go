@@ -148,7 +148,7 @@ func GetUserByUsername(db *sql.DB, username string) (User, error) {
 
 type LoginResponse struct {
 	Username string `json:"username"`
-	Password string `json:"password"`
+	Password string `json:"password,omitempty"`
 	Token    string `json:"token"`
 	ID       int    `json:"id"`
 }
@@ -157,10 +157,10 @@ func GetUserByUsernameLogin(db *sql.DB, username string) (LoginResponse, error) 
 	ctx := context.Background()
 
 	query := `SELECT id, username, password
-  FROM users 
+  FROM users
   WHERE username = $1`
 
 	var user LoginResponse
-	err := db.QueryRowContext(ctx, query, username).Scan(&user.ID, &user.Username, user.Password)
+	err := db.QueryRowContext(ctx, query, username).Scan(&user.ID, &user.Username, &user.Password)
 	return user, err
 }

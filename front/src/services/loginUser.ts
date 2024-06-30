@@ -1,3 +1,4 @@
+import { userbackendurl } from "@/common/constants";
 import { User } from "../common/types";
 
 export default async function loginUser(username: string, password: string) {
@@ -7,7 +8,7 @@ export default async function loginUser(username: string, password: string) {
   };
 
   try {
-    const res = await fetch("url", {
+    const res = await fetch(userbackendurl + "login", {
       headers: {
         "Content-Type": "application/json",
       },
