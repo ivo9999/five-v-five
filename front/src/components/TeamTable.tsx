@@ -6,6 +6,9 @@ interface TeamTableProps {
   newChamp: (user: string) => void;
   teamSwap: string;
   setTeamSwap: (user: string) => void;
+  setWinner: (winner: string) => void;
+  winner: string;
+  isBlue: boolean;
 }
 
 const TeamTable: React.FC<TeamTableProps> = ({
@@ -13,10 +16,19 @@ const TeamTable: React.FC<TeamTableProps> = ({
   newChamp,
   teamSwap,
   setTeamSwap,
+  setWinner,
+  winner,
+  isBlue,
 }) => {
+  const team_color = isBlue ? "team_blue" : "team_red";
   return (
     <div className="bg-black text-white rounded-lg">
-      <h2 className="text-2xl font-bold text-center mb-4">{team.name}</h2>
+      <h2
+        onClick={() => setWinner(team_color)}
+        className={`text-2xl font-bold text-center mb-4 ${winner === team_color ? "bg-red-500 rounded-xl" : ""}`}
+      >
+        {team.name}
+      </h2>
       <table className="table-auto w-full">
         <thead>
           <tr className="border-b-white border-b-2">
@@ -36,7 +48,7 @@ const TeamTable: React.FC<TeamTableProps> = ({
                 <td
                   onClick={() => setTeamSwap(summoner.name)}
                   className={`px-4 py-2 ${
-                    teamSwap === summoner.name ? "bg-red-500 rounded" : ""
+                    teamSwap === summoner.name ? "bg-red-500 rounded-xl" : ""
                   } text-center hover:cursor-pointer border-b-white border-b`}
                 >
                   {decodeURIComponent(summoner.name)}

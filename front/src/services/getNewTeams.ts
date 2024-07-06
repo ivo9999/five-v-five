@@ -1,4 +1,3 @@
-
 import { gamebackendurl } from "@/common/constants";
 import { Game } from "@/common/types";
 
@@ -9,24 +8,22 @@ interface GetGameParams {
 
 export const getNewTeams = async ({ gameid }: GetGameParams): Promise<Game> => {
   try {
-    const resp = await fetch(gamebackendurl + 'games/' + gameid + "/shuffle", {
+    const resp = await fetch(gamebackendurl + "games/" + gameid + "/shuffle", {
       headers: {
-        'Content-Type': 'application/json',
+        "Content-Type": "application/json",
       },
-      method: 'POST',
-    })
-
+      method: "POST",
+    });
 
     if (!resp.ok) {
-      console.log('error fething game')
+      console.log("error fething game");
     }
 
-    const data = await resp.json()
+    const data = await resp.json();
 
-    return data
-
+    return data;
   } catch (error) {
-    console.log('error fething game')
-    throw error
+    console.log("error fething game");
+    throw error;
   }
-}
+};

@@ -11,6 +11,7 @@ import { getChampions } from "@/services/getChampions";
 import { getNewTeams } from "@/services/getNewTeams";
 import { getNewChampion } from "@/services/getNewChampion";
 import { swapSummoners } from "@/services/swapSummoners";
+import { selectWinner } from "@/services/selectWinner";
 
 export default function Game() {
   const params = useParams();
@@ -76,6 +77,12 @@ export default function Game() {
 
   const [blueTeam, setBlueTeam] = useState<GameType["team_blue"] | null>(null);
   const [redTeam, setRedTeam] = useState<GameType["team_red"] | null>(null);
+  const [winner, setWinner] = useState<string>("");
+
+  const setWinnerFn = async (winner: string) => {
+    const resp = await selectWinner(data?.id ? data.id : 0, winner);
+    setWinner(winner);
+  };
 
   useEffect(() => {
     if (data) {
@@ -87,6 +94,7 @@ export default function Game() {
         ...data.team_red,
         summoners: sortSummonersByRole(data.team_red.summoners),
       });
+      setWinner(data.winner);
     }
   }, [data]);
 
@@ -133,6 +141,9 @@ export default function Game() {
           newChamp={getNewChampFn}
           teamSwap={team1Swap}
           setTeamSwap={setTeam1Swap}
+          setWinner={setWinnerFn}
+          winner={winner}
+          isBlue={true}
         />
         <RolesSplitter team={redTeam} />
         <TeamTable
@@ -140,14 +151,17 @@ export default function Game() {
           newChamp={getNewChampFn}
           teamSwap={team2Swap}
           setTeamSwap={setTeam2Swap}
+          setWinner={setWinnerFn}
+          winner={winner}
+          isBlue={false}
         />
       </div>
       <div className="flex flex-col-3 bg-black text-white">
-        <Button className="w-32" onClick={getNewTeamsFn}>
+        <Button className="w-32 mr-4" onClick={getNewTeamsFn}>
           Reroll Teams
         </Button>
-        <Button className="mx-4">Select Winner</Button>
-        <Button className="w-32" onClick={getChamps}>
+        <div>{winner}</div>
+        <Button className="w-32 ml-4" onClick={getChamps}>
           Get Champions
         </Button>
       </div>
