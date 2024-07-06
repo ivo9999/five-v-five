@@ -1,5 +1,4 @@
 import { userbackendurl } from "@/common/constants";
-import { User } from "../common/types";
 
 export default async function loginUser(username: string, password: string) {
   const body = {
@@ -21,10 +20,8 @@ export default async function loginUser(username: string, password: string) {
       return null;
     }
 
-    const data: User = await res.json();
-    return data;
+    return await res.json();
   } catch (error) {
-    console.log("Error:", error);
     return null;
   }
 }

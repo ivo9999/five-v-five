@@ -43,10 +43,10 @@ export type UserData = {
 };
 
 export type AuthContextType = {
-  currentUser: User | null;
+  currentUser: UserData | null;
   isLoading: boolean;
   logOutUser: () => void;
-  setCurrentUser: (user: User) => void;
+  logInUser: (user: UserData) => void;
 };
 
 export type AuthProviderProps = {

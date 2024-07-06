@@ -14,6 +14,7 @@ func CreateJWT(account *LoginResponse) (string, error) {
 	claims := &jwt.MapClaims{
 		"expiresAt": expirationTime,
 		"id":        account.ID,
+		"username":  account.Username,
 	}
 
 	secret := "makeitasecretlater"

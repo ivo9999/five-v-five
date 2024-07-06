@@ -73,6 +73,40 @@ func (app *Config) loginUser(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(res)
 }
 
+func (app *Config) checkUser(w http.ResponseWriter, r *http.Request) {
+	var req CheckUserRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+	_, err := data.ValidateJWT(r)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusUnauthorized)
+		return
+	}
+
+	account, err := data.GetUserByUsernameLogin(app.DB.DB, req.Username)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	newToken, err := data.CreateJWT(&account)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	res := data.LoginResponse{
+		Username: account.Username,
+		ID:       account.ID,
+		Token:    newToken,
+	}
+
+	w.WriteHeader(http.StatusOK)
+	json.NewEncoder(w).Encode(res)
+}
+
 // updateAccount handler
 func (app *Config) updateAccount(w http.ResponseWriter, r *http.Request) {
 	var user data.User

@@ -571,14 +571,10 @@ func GetChampionPointsByUser(ctx context.Context, db *sql.DB, summonerName, cham
 		return 0, err
 	}
 
-	fmt.Println(puuid)
-
 	err = db.QueryRowContext(ctx, "SELECT champion_id FROM champions WHERE name = $1", championName).Scan(&championID)
 	if err != nil {
 		return 0, err
 	}
-
-	fmt.Println(championID)
 
 	query := `
     SELECT champion_points
@@ -586,7 +582,6 @@ func GetChampionPointsByUser(ctx context.Context, db *sql.DB, summonerName, cham
     WHERE puuid = $1 AND champion_id = $2
     `
 	err = db.QueryRowContext(ctx, query, puuid, championID).Scan(&points)
-	fmt.Println(points)
 	if err != nil {
 		return 0, err
 	}

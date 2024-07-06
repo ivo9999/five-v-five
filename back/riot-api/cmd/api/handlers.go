@@ -420,6 +420,8 @@ func (s *RiotAPIServer) GetTeams(ctx context.Context, req *riot.GetTeamsRequest)
 func (s *RiotAPIServer) GetGameData(ctx context.Context, req *riot.GetGameDataRequest) (*riot.GetGameDataResponse, error) {
 	var team1Masteries, team2Masteries, team1Elo, team2Elo int
 
+	fmt.Println(req.Team1.Summoners, req.Team2.Summoners)
+
 	for _, summoner := range req.Team1.Summoners {
 		if summoner.ChampionName != "" {
 			m, err := data.GetChampionPointsByUser(ctx, s.db, summoner.SummonerName, summoner.ChampionName)

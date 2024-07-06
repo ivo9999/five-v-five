@@ -494,18 +494,18 @@ func (h *Handlers) GetNewChampion(w http.ResponseWriter, r *http.Request) {
 
 	grpcResponseData, err := h.RiotAPI.GetGameData(r.Context(), grpcRequestData)
 	if err != nil {
-		h.Config.errorJSON(w, err, http.StatusInternalServerError)
+		h.Config.errorJSON(w, err, http.StatusLocked)
 		return
 	}
 
 	err = data.UpdateTeam(h.DB.DB, game.TeamBlue, int(grpcResponseData.Team1.Rating), int(grpcResponseData.Team1.MasteryScore))
 	if err != nil {
-		h.Config.errorJSON(w, err, http.StatusInternalServerError)
+		h.Config.errorJSON(w, err, http.StatusGatewayTimeout)
 		return
 	}
 	err = data.UpdateTeam(h.DB.DB, game.TeamRed, int(grpcResponseData.Team2.Rating), int(grpcResponseData.Team2.MasteryScore))
 	if err != nil {
-		h.Config.errorJSON(w, err, http.StatusInternalServerError)
+		h.Config.errorJSON(w, err, http.StatusPartialContent)
 		return
 	}
 

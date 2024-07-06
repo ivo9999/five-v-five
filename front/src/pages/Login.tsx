@@ -1,15 +1,24 @@
 import React, { useState } from "react";
 import { Button } from "../components/ui/button";
 import { Input as TextInput } from "../components/ui/input";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import loginUser from "@/services/loginUser";
+import { useAuth } from "@/hooks/useAuth";
+import { setToken } from "@/services/tokenUtils";
 const LoginPage: React.FC = () => {
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
+  const navigate = useNavigate();
+  const auth = useAuth();
 
   const loginUserFunc = async () => {
     const loginRes = await loginUser(username, password);
-    console.log(loginRes);
+
+    if (loginRes) {
+      auth.logInUser(loginRes);
+      setToken(loginRes.token);
+      navigate("/");
+    }
   };
 
   return (

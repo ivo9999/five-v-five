@@ -9,6 +9,7 @@ import Game from "./pages/Game";
 import { queryClient } from "./utils/http";
 import { loader as GameLoader } from "./utils/loaders/loadGame";
 import NotFoundPage from "./pages/NotFound";
+import { AuthProvider } from "./contexts/AuthContext";
 
 function App() {
   const Root = () => {
@@ -23,24 +24,26 @@ function App() {
   };
 
   return (
-    <QueryClientProvider client={queryClient}>
-      <BrowserRouter>
-        <Routes>
-          <Route path="/" element={<Root />}>
-            <Route index element={<HomePage />} />
-            <Route path="*" element={<NotFoundPage />} />
-            <Route path="login" element={<LoginPage />} />
-            <Route path="signup" element={<SignupPage />} />
-            <Route
-              path="games"
-              element={<CreateGame />}
-              loader={CreateGameLoader}
-            />
-            <Route path="games/:id" element={<Game />} loader={GameLoader} />
-          </Route>
-        </Routes>
-      </BrowserRouter>
-    </QueryClientProvider>
+    <AuthProvider>
+      <QueryClientProvider client={queryClient}>
+        <BrowserRouter>
+          <Routes>
+            <Route path="/" element={<Root />}>
+              <Route index element={<HomePage />} />
+              <Route path="*" element={<NotFoundPage />} />
+              <Route path="login" element={<LoginPage />} />
+              <Route path="signup" element={<SignupPage />} />
+              <Route
+                path="games"
+                element={<CreateGame />}
+                loader={CreateGameLoader}
+              />
+              <Route path="games/:id" element={<Game />} loader={GameLoader} />
+            </Route>
+          </Routes>
+        </BrowserRouter>
+      </QueryClientProvider>
+    </AuthProvider>
   );
 }
 

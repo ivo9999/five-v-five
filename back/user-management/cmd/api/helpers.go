@@ -14,10 +14,14 @@ type LoginRequest struct {
 	Password string `json:"password"`
 }
 
+type CheckUserRequest struct {
+	Username string `json:"username"`
+}
+
 type jsonResponse struct {
-	Error   bool   `json:"error"`
-	Message string `json:"message"`
 	Data    any    `json:"data,omitempty"`
+	Message string `json:"message"`
+	Error   bool   `json:"error"`
 }
 
 // readJSON tries to read the body of a request and converts it into JSON
